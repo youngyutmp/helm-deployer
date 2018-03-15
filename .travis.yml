@@ -6,9 +6,9 @@ go:
 env:
   global:
     - "PATH=/home/travis/gopath/bin:$PATH"
-    - FRONTEND_VERSION="0.1.0"
+    - FRONTEND_VERSION="2018-03-15-16-18-27"
 
 script:
-  #- curl -o build-prod.tar.gz -L "https://github.com/entwico/helm-deployer-frontend/releases/download/v${FRONTEND_VERSION}/build-prod.tar.gz"
-  #- tar xzf build-prod.tar.gz
+  - curl -o build-prod.tar.gz -L "https://github.com/entwico/helm-deployer-fe/releases/download/${FRONTEND_VERSION}/dist.tar.gz"
+  - tar xzf build-prod.tar.gz
   - make vendor generate test build dist
