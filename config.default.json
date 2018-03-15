@@ -1,0 +1,18 @@
+{
+  "api": {
+    "host": "0.0.0.0",
+    "port": 8000
+  },
+  "chartRepository": {
+    "baseUrl": "http://chartmuseum-chartmuseum.infrastructure:8080"
+  },
+  "db": {
+    "path": "db.bolt"
+  },
+  "tiller": {
+    "host": "tiller-deploy.kube-system:44134"
+  },
+  "log_config": {
+    "level": "INFO"
+  }
+}
