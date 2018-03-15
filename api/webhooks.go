@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/entwico/helm-deployer/enums"
@@ -75,5 +76,25 @@ func (api *API) DeleteWebhook(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &MessageResponse{Message: "item deleted"}
+	return ctx.JSON(http.StatusOK, response)
+}
+
+func (api *API) ForceDeploy(ctx echo.Context) error {
+	id := ctx.Param("id")
+	w, err := api.webhooks.FindOne(id)
+	if err != nil {
+		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		return ctx.JSON(http.StatusInternalServerError, response)
+	}
+	if w == nil {
+		response := &MessageResponse{Status: enums.Error, Message: fmt.Sprintf("webhook %s not found", id)}
+		return ctx.JSON(http.StatusNotFound, response)
+	}
+	err = api.webhookCallbacks.DeployChart(w.DeployConfig)
+	if err != nil {
+		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		return ctx.JSON(http.StatusInternalServerError, response)
+	}
+	response := &MessageResponse{Message: fmt.Sprintf("deploy for %s dispatched", w.DeployConfig.ReleaseName)}
 	return ctx.JSON(http.StatusOK, response)
 }

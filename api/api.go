@@ -103,6 +103,7 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 	g.GET("/webhooks/:id", api.GetWebhook)
 	g.PUT("/webhooks/:id", api.UpdateWebhook)
 	g.DELETE("/webhooks/:id", api.DeleteWebhook)
+	g.POST("/webhooks/:id/deploy", api.ForceDeploy)
 
 	// releases
 	g.GET("/releases", api.ListReleases)

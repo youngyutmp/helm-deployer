@@ -21,6 +21,7 @@ const (
 
 type WebhookCallbackService interface {
 	ProcessWebhook(webhookType string, webhookBody []byte) error
+	DeployChart(cfg DeployConfig) error
 }
 
 func NewGitlabWebhookCallbackService(webhookSvc WebhookService, chartRepoSvc ChartRepositoryService, chartValuesSvc ChartValuesService, helmSvc HelmService) WebhookCallbackService {
@@ -79,7 +80,7 @@ func (c *GitlabWebhookCallbackService) processCondition(cond WebhookCondition) e
 	}
 	for _, cfg := range dc {
 		logrus.Debugf("Updating release %s. Chart %s %s", cfg.ReleaseName, cfg.ChartName, cfg.ChartVersion)
-		err = c.deployChart(cfg)
+		err = c.DeployChart(cfg)
 		if err != nil {
 			return err
 		}
@@ -103,7 +104,7 @@ func (c *GitlabWebhookCallbackService) getDeployConfigs(cond WebhookCondition) (
 	return dc, nil
 }
 
-func (c *GitlabWebhookCallbackService) deployChart(cfg DeployConfig) error {
+func (c *GitlabWebhookCallbackService) DeployChart(cfg DeployConfig) error {
 	logrus.Debugf("Deploying chart %s %s", cfg.ChartName, cfg.ChartVersion)
 
 	var rawVals []byte

@@ -1,6 +1,6 @@
 FROM alpine
 
-ARG APP_VERSION=0.1.0
+ARG APP_VERSION=0.1.1
 ARG DOWNLOAD_URL=https://github.com/entwico/helm-deployer/releases/download/v$APP_VERSION/linux_amd64_helm-deployer
 
 LABEL maintainer="Andrew Tarasenko andrexus@gmail.com"
