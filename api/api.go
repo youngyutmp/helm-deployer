@@ -145,7 +145,7 @@ func (api *API) frontend404Fallback(next echo.HandlerFunc) echo.HandlerFunc {
 				c.HTML(http.StatusOK, string(buf.Bytes()))
 			}
 		}
-		return err
+		return nil
 	}
 }
 
