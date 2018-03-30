@@ -3,7 +3,7 @@ PROJECT_NAMESPACE?=entwico
 PROJECT?=github.com/${PROJECT_NAMESPACE}/${PROJECT_NAME}
 BUILD_DIR=build
 BUILDTAGS=
-OSARCH=darwin/amd64 linux/amd64 linux/arm windows/amd64
+OSARCH=darwin/amd64 linux/amd64
 DIST_USER=entwico
 GIT_VERSION=$(shell git describe --abbrev=0 --tags 2> /dev/null || git rev-parse HEAD)
 GOLDFLAGS=-s -w -X $(PROJECT)/cmd.Version=$(GIT_VERSION)
