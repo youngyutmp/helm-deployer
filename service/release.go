@@ -2,11 +2,11 @@ package service
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/protobuf/ptypes"
-	"sort"
 )
 
 type ReleaseUpdateRequest struct {
@@ -26,14 +26,14 @@ type Release struct {
 }
 
 type ReleaseInfo struct {
-	Status        *ReleaseStatus `json:"status,omitempty"`
-	FirstDeployed time.Time      `json:"first_deployed"`
-	LastDeployed  time.Time      `json:"last_deployed"`
+	Status        *ReleaseStatus `json:"status"`
+	FirstDeployed time.Time      `json:"firstDeployed"`
+	LastDeployed  time.Time      `json:"lastDeployed"`
 	Description   string         `json:"Description"`
 }
 
 type ReleaseStatus struct {
-	Code      int    `json:"code"`
+	Status    string `json:"status"`
 	Resources string `json:"resources"`
 	Notes     string `json:"notes"`
 }
@@ -110,6 +110,11 @@ func (c *ReleaseServiceImpl) ListReleases() ([]Release, error) {
 			Namespace: item.Namespace,
 			Version:   int(item.Version),
 			Info: &ReleaseInfo{
+				Status: &ReleaseStatus{
+					Status:    item.Info.Status.GetCode().String(),
+					Resources: item.Info.Status.GetResources(),
+					Notes:     item.Info.Status.GetNotes(),
+				},
 				FirstDeployed: firstDeployed,
 				LastDeployed:  lastDeployed,
 				Description:   item.Info.Description,

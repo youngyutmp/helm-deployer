@@ -6,7 +6,7 @@ go:
 env:
   global:
     - "PATH=/home/travis/gopath/bin:$PATH"
-    - FRONTEND_VERSION="2018-03-30-12-49-50"
+    - FRONTEND_VERSION="2018-03-31-15-41-57"
 
 script:
   - curl -o build-prod.tar.gz -L "https://github.com/entwico/helm-deployer-fe/releases/download/${FRONTEND_VERSION}/dist.tar.gz"
