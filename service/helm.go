@@ -35,5 +35,5 @@ func (c *HelmServiceImpl) UpdateRelease(rlsName string, chartData io.Reader, raw
 	if err != nil {
 		return nil, err
 	}
-	return c.Client.UpdateReleaseFromChart(rlsName, chart, helm.UpdateValueOverrides(rawVals), helm.UpgradeForce(true))
+	return c.Client.UpdateReleaseFromChart(rlsName, chart, helm.UpdateValueOverrides(rawVals), helm.UpgradeForce(true), helm.UpgradeRecreate(true))
 }
