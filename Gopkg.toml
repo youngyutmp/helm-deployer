@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/labstack/echo"
-  version = "3.2.1"
+  version = "3.3.5"
 
 [[constraint]]
   name = "github.com/boltdb/bolt"

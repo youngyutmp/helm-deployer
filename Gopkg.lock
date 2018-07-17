@@ -42,6 +42,14 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:2426da75f49e5b8507a6ed5d4c49b06b2ff795f4aec401c106b7db8fb2625cd7"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = ""
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   digest = "1:b2106f1668ea5efc1ecc480f7e922a093adb9563fd9ce58585292871f0d0f229"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -126,23 +134,28 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:5762aed12cfc5f7aa6734c72ddbb20c312cda51a9de9723143da7c22386c1fa3"
+  digest = "1:1c875e8754f10145839abdafb9b8c0f9a6c2f695223113ab0c483c435e0712b7"
   name = "github.com/labstack/echo"
-  packages = ["."]
-  pruneopts = ""
-  revision = "b338075a0fc6e1a0683dbf03d09b4957a289e26f"
-  version = "3.2.6"
-
-[[projects]]
-  digest = "1:f5beffdd38fd8b41a3a338be6276352d0744d33005bef8a4d88e9485977ffe2e"
-  name = "github.com/labstack/gommon"
   packages = [
-    "color",
-    "log",
+    ".",
+    "middleware",
   ]
   pruneopts = ""
-  revision = "57409ada9da0f2afad6664c49502f8c50fbd8476"
-  version = "0.2.3"
+  revision = "6d227dfea4d2e52cb76856120b3c17f758139b4e"
+  version = "3.3.5"
+
+[[projects]]
+  digest = "1:7ec1824f9c478f1cca435108726f194b746052b6f952cd7ce847db5a7efba1d6"
+  name = "github.com/labstack/gommon"
+  packages = [
+    "bytes",
+    "color",
+    "log",
+    "random",
+  ]
+  pruneopts = ""
+  revision = "d6898124de917583f5ff5592ef931d1dfe0ddc05"
+  version = "0.2.6"
 
 [[projects]]
   digest = "1:093cd7ebfdecf5692c66f0b0f7a1877d796c89d9940f5769439c53dc65264036"
@@ -424,6 +437,7 @@
     "github.com/globalsign/mgo/bson",
     "github.com/golang/protobuf/ptypes",
     "github.com/labstack/echo",
+    "github.com/labstack/echo/middleware",
     "github.com/labstack/gommon/log",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",

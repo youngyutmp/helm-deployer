@@ -18,6 +18,11 @@ type Config struct {
 		Port int    `mapstructure:"port" json:"port"`
 	} `mapstructure:"api" json:"api"`
 
+	APP struct {
+		Username string `mapstructure:"username" json:"username"`
+		Password string `mapstructure:"password" json:"password"`
+	} `mapstructure:"app" json:"app"`
+
 	ChartRepository struct {
 		BaseURL string `mapstructure:"baseUrl" json:"baseUrl"`
 	} `mapstructure:"chartRepository" json:"chartRepository"`

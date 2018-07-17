@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/boltdb/bolt"
 	"github.com/entwico/helm-deployer/conf"
 	"github.com/entwico/helm-deployer/embedded"
 	"github.com/entwico/helm-deployer/enums"
 	"github.com/entwico/helm-deployer/service"
-	"github.com/boltdb/bolt"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -79,13 +80,28 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 	api.webhooks = service.NewWebhookService(service.NewWebhookRepository(db))
 	api.webhookCallbacks = service.NewGitlabWebhookCallbackService(api.webhooks, api.chartRepository, api.chartValues, helmService)
 
+	authConfig := middleware.BasicAuthConfig{Realm:"helm-deployer"}
+	authConfig.Validator = func(username, password string, c echo.Context) (bool, error) {
+		if username == config.APP.Username && password == config.APP.Password {
+			return true, nil
+		}
+		return false, nil
+	}
+	authConfig.Skipper = func(c echo.Context) bool {
+		if config.APP.Username == "" && config.APP.Password == "" {
+			return true
+		}
+		return false
+	}
+	basicAuth := middleware.BasicAuthWithConfig(authConfig)
+
 	// add the endpoints
 	e := echo.New()
 	e.HideBanner = true
 	//e.Use(api.logRequest)
 
 	e.GET("/health", api.Health)
-	g := e.Group("/api/v1")
+	g := e.Group("/api/v1", basicAuth)
 
 	// chart repository
 	g.GET("/charts", api.ListChartItems)
