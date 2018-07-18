@@ -101,10 +101,13 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 
 	// add the endpoints
 	e := echo.New()
+
 	e.HideBanner = true
 	//e.Use(api.logRequest)
 
 	e.GET("/health", api.Health)
+	e.POST("/api/v1/callbacks/gitlab", api.GitlabWebhook)
+
 	g := e.Group("/api/v1", basicAuth)
 
 	// chart repository
@@ -129,13 +132,9 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 	g.GET("/releases", api.ListReleases)
 	g.PUT("/releases/:name", api.UpdateRelease)
 
-	// webhook callbacks
-	g.POST("/callbacks/gitlab", api.GitlabWebhook)
-
 	e.GET("/*", api.serveVirtualFS, api.frontend404Fallback)
 
 	api.echo = e
-
 	return api
 }
 
