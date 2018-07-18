@@ -87,8 +87,12 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 		}
 		return false, nil
 	}
+	skipAuth := config.APP.Username == "" && config.APP.Password == ""
+	if skipAuth {
+		logrus.Debugf("Basic Auth credentials are not configured")
+	}
 	authConfig.Skipper = func(c echo.Context) bool {
-		if config.APP.Username == "" && config.APP.Password == "" {
+		if skipAuth {
 			return true
 		}
 		return false
