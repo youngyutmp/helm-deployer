@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"github.com/entwico/helm-deployer/conf"
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = cobra.Command{
@@ -14,7 +14,7 @@ var rootCmd = cobra.Command{
 	},
 }
 
-// NewRoot will add flags and subcommands to the different commands
+// RootCmd will add flags and subcommands to the different commands
 func RootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringP("config", "c", "", "The configuration file")
 	rootCmd.AddCommand(&serveCmd, &versionCmd)

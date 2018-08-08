@@ -1,8 +1,11 @@
 package enums
 
-type APIResponseStatus int
+// ResponseStatus enum
+type ResponseStatus int
 
 const (
-	Success APIResponseStatus = iota
+	// Success response
+	Success ResponseStatus = iota
+	// Error response
 	Error
 )

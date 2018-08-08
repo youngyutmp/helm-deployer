@@ -1,0 +1,87 @@
+version: '2'
+
+vars:
+  PROJECT_NAMESPACE: entwico
+  PROJECT_NAME: helm-deployer
+  PROJECT: github.com/{{.PROJECT_NAMESPACE}}/{{.PROJECT_NAME}}
+  OSARCH: darwin/amd64 linux/amd64 linux/arm
+  BUILD_DIR: build
+  BUILDTAGS: ""
+  GOX_OUTPUT: "{{.BUILD_DIR}}/{{`{{.OS}}_{{.Arch}}_{{.Dir}}`}}"
+  DIST_USER: andrexus
+  GIT_VERSION:
+    sh: git describe --abbrev=0 --tags 2> /dev/null || git rev-parse HEAD
+  GOTOOLS: >
+    github.com/golang/dep/cmd/dep
+    github.com/alvaroloes/enumer
+    github.com/mjibson/esc
+    github.com/mitchellh/gox
+    github.com/tcnksm/ghr
+  LINTERS: >
+    gopkg.in/alecthomas/gometalinter.v2
+    github.com/mgechev/revive
+    github.com/kisielk/errcheck
+    golang.org/x/tools/cmd/goimports
+    honnef.co/go/tools/cmd/staticcheck
+    honnef.co/go/tools/cmd/unused
+
+tasks:
+  default:
+    cmds:
+    - task: build
+
+  setup_build:
+    cmds:
+    - go get -v {{.GOTOOLS}}
+    - go get -v {{.LINTERS}}
+
+  build:
+    cmds:
+    - task: clean
+    - task: setup_build
+    - task: vendor
+    - task: generate
+    - task: test
+    - echo "==> Compiling..."
+    - CGO_ENABLED=0 gox -ldflags "{{.GOLDFLAGS}}" -osarch "{{.OSARCH}}" -output "{{.GOX_OUTPUT}}"
+    vars:
+      GOLDFLAGS: "-s -w -X {{.PROJECT}}/cmd.version={{.GIT_VERSION}}"
+      GIT_VERSION:
+        sh: git describe --abbrev=0 --tags 2> /dev/null || git rev-parse HEAD
+
+  dist:
+    cmds:
+    - ghr -u {{.DIST_USER}} --token {{.GITHUB_TOKEN}} --replace {{.GIT_VERSION}} build/
+
+  vendor:
+    cmds:
+    - echo "==> Vendoring dependencies..."
+    - dep ensure -v -vendor-only
+
+  clean:
+    cmds:
+    - echo "==> Cleaning BUILD_DIR..."
+    - rm -rf {{.BUILD_DIR}}/*
+
+  generate:
+    cmds:
+    - echo "==> Generating code..."
+    - go generate
+
+  test:
+    deps: [setup_build]
+    cmds:
+    - task: lint
+    - echo "==> Testing code..."
+    - go test -v -race -tags "{{.BUILDTAGS}} cgo" $(go list {{.PROJECT}}/... | grep -v vendor)
+
+  lint:
+    deps: [gometalinter, revive]
+
+  gometalinter:
+    cmds:
+    - gometalinter.v2 ./...
+
+  revive:
+    cmds:
+    - revive -config revive.toml -formatter stylish -exclude vendor/... ./...

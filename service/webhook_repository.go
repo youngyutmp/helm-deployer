@@ -5,38 +5,37 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 )
 
 var webhooksBucket = []byte("webhooks")
 
-type WebhookRepository interface {
-	FindAll() ([]Webhook, error)
-	FindOne(id string) (*Webhook, error)
-	FindByName(name string) (*Webhook, error)
-	Save(item *Webhook) (*Webhook, error)
-	Delete(id string) error
-}
-
+//BoltWebhookRepository is an implementation of the WebhookRepository interface which uses BoldDB
 type BoltWebhookRepository struct {
 	db *bolt.DB
 }
 
-func NewWebhookRepository(db *bolt.DB) *BoltWebhookRepository {
-	db.Update(func(tx *bolt.Tx) error {
+//NewWebhookRepository returns a new instance of the WebhookRepository
+func NewWebhookRepository(db *bolt.DB) (domain.WebhookRepository, error) {
+	err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(webhooksBucket)
 		return err
 	})
-	return &BoltWebhookRepository{db}
+	if err != nil {
+		return nil, err
+	}
+	return &BoltWebhookRepository{db}, nil
 }
 
-func (r *BoltWebhookRepository) FindAll() ([]Webhook, error) {
-	items := []Webhook{}
+//FindAll returns all Webhooks
+func (r *BoltWebhookRepository) FindAll() ([]domain.Webhook, error) {
+	items := make([]domain.Webhook, 0)
 
 	err := r.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(webhooksBucket)
-		b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			item, err := decodeWebhook(v)
 			if err != nil {
 				return err
@@ -44,6 +43,9 @@ func (r *BoltWebhookRepository) FindAll() ([]Webhook, error) {
 			items = append(items, *item)
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -53,8 +55,9 @@ func (r *BoltWebhookRepository) FindAll() ([]Webhook, error) {
 	return items, nil
 }
 
-func (r *BoltWebhookRepository) FindOne(id string) (*Webhook, error) {
-	var item *Webhook
+//FindOne returns a Webhook by its id
+func (r *BoltWebhookRepository) FindOne(id string) (*domain.Webhook, error) {
+	var item *domain.Webhook
 	err := r.db.View(func(tx *bolt.Tx) error {
 		var err error
 		b := tx.Bucket(webhooksBucket)
@@ -75,7 +78,8 @@ func (r *BoltWebhookRepository) FindOne(id string) (*Webhook, error) {
 	return item, nil
 }
 
-func (r *BoltWebhookRepository) FindByName(name string) (*Webhook, error) {
+//FindByName returns a Webhook by name
+func (r *BoltWebhookRepository) FindByName(name string) (*domain.Webhook, error) {
 	items, err := r.FindAll()
 	if err != nil {
 		return nil, err
@@ -88,25 +92,25 @@ func (r *BoltWebhookRepository) FindByName(name string) (*Webhook, error) {
 	return nil, nil
 }
 
-func (r *BoltWebhookRepository) Save(item *Webhook) (*Webhook, error) {
+//Save persists Webhook the the database
+func (r *BoltWebhookRepository) Save(item *domain.Webhook) (*domain.Webhook, error) {
 	err := r.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(webhooksBucket)
 		if item.ID == "" {
 			item.ID = bson.NewObjectId()
 			item.CreatedAt = time.Now()
 			item.UpdatedAt = time.Now()
-			enc, err := item.encodeWebhook()
-			if err != nil {
-				return err
-			}
-			return b.Put([]byte(item.ID.Hex()), enc)
-		} else {
-			enc, err := item.encodeWebhook()
+			enc, err := encodeWebhook(item)
 			if err != nil {
 				return err
 			}
 			return b.Put([]byte(item.ID.Hex()), enc)
 		}
+		enc, err := encodeWebhook(item)
+		if err != nil {
+			return err
+		}
+		return b.Put([]byte(item.ID.Hex()), enc)
 	})
 	if err != nil {
 		return nil, err
@@ -115,6 +119,7 @@ func (r *BoltWebhookRepository) Save(item *Webhook) (*Webhook, error) {
 	return item, nil
 }
 
+//Delete removes a Webhook
 func (r *BoltWebhookRepository) Delete(id string) error {
 	item, err := r.FindOne(id)
 	if err != nil {
@@ -130,7 +135,7 @@ func (r *BoltWebhookRepository) Delete(id string) error {
 	})
 }
 
-func (p *Webhook) encodeWebhook() ([]byte, error) {
+func encodeWebhook(p *domain.Webhook) ([]byte, error) {
 	enc, err := json.Marshal(p)
 	if err != nil {
 		return nil, err
@@ -138,8 +143,8 @@ func (p *Webhook) encodeWebhook() ([]byte, error) {
 	return enc, nil
 }
 
-func decodeWebhook(data []byte) (*Webhook, error) {
-	var item *Webhook
+func decodeWebhook(data []byte) (*domain.Webhook, error) {
+	var item *domain.Webhook
 	err := json.Unmarshal(data, &item)
 	if err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 
 const headerWebhookGitlab = "X-Gitlab-Event"
 
+//GitlabWebhook listens to webhooks from gitlab
 func (api *API) GitlabWebhook(ctx echo.Context) error {
 
 	data := new(map[string]interface{})
@@ -27,7 +28,11 @@ func (api *API) GitlabWebhook(ctx echo.Context) error {
 	webhookType := ctx.Request().Header.Get(headerWebhookGitlab)
 	logrus.Info(fmt.Sprintf("Received new gitlab webhook. Type: %s", webhookType))
 	logrus.Debug(string(bytes))
-	go api.webhookCallbacks.ProcessWebhook(webhookType, bytes)
+	go func() {
+		if err := api.services.WebhookCallbackService.ProcessWebhook(webhookType, bytes); err != nil {
+			logrus.Warnf("Can't process webhook: %v", err)
+		}
+	}()
 	response := &MessageResponse{Message: "dispatched"}
 	return ctx.JSON(http.StatusOK, response)
 }

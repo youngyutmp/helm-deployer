@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version string = "unset"
+var version = "unset"
 
 var versionCmd = cobra.Command{
-	Run: showVersion,
-	Use: "version",
+	Run:   showVersion,
+	Use:   "version",
 	Short: "Show version",
-	Long: "Show current application version",
+	Long:  "Show current application version",
 }
 
 func showVersion(cmd *cobra.Command, args []string) {
-	fmt.Println(Version)
+	fmt.Println(version)
 }

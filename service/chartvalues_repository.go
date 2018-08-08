@@ -1,42 +1,43 @@
 package service
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/boltdb/bolt"
-	"github.com/globalsign/mgo/bson"
 	"errors"
+
+	"encoding/json"
+
+	"github.com/boltdb/bolt"
+	"github.com/entwico/helm-deployer/domain"
+	"github.com/globalsign/mgo/bson"
 )
 
 var chartBucket = []byte("chartValues")
 
-type ChartValuesRepository interface {
-	FindAll() ([]ChartValues, error)
-	FindOne(id string) (*ChartValues, error)
-	FindByName(name string) (*ChartValues, error)
-	Save(item *ChartValues) (*ChartValues, error)
-	Delete(id string) error
-}
-
+//BoltChartValuesRepository is an implementation of ChartValuesRepository which uses BoltDB
 type BoltChartValuesRepository struct {
 	db *bolt.DB
 }
 
-func NewChartValuesRepository(db *bolt.DB) *BoltChartValuesRepository {
-	db.Update(func(tx *bolt.Tx) error {
+//NewChartValuesRepository returns a new instance of ChartValuesRepository
+func NewChartValuesRepository(db *bolt.DB) (domain.ChartValuesRepository, error) {
+	err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(chartBucket)
 		return err
 	})
-	return &BoltChartValuesRepository{db}
+	if err != nil {
+		return nil, err
+	}
+	return &BoltChartValuesRepository{db}, nil
 }
 
-func (r *BoltChartValuesRepository) FindAll() ([]ChartValues, error) {
-	items := []ChartValues{}
+//FindAll returns all ChartValues objects
+func (r *BoltChartValuesRepository) FindAll() ([]domain.ChartValues, error) {
+	items := make([]domain.ChartValues, 0)
 
 	err := r.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(chartBucket)
-		b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			item, err := decodeChartValues(v)
 			if err != nil {
 				return err
@@ -44,6 +45,9 @@ func (r *BoltChartValuesRepository) FindAll() ([]ChartValues, error) {
 			items = append(items, *item)
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -53,8 +57,9 @@ func (r *BoltChartValuesRepository) FindAll() ([]ChartValues, error) {
 	return items, nil
 }
 
-func (r *BoltChartValuesRepository) FindOne(id string) (*ChartValues, error) {
-	var item *ChartValues
+//FindOne returns ChartValues object by its id
+func (r *BoltChartValuesRepository) FindOne(id string) (*domain.ChartValues, error) {
+	var item *domain.ChartValues
 	err := r.db.View(func(tx *bolt.Tx) error {
 		var err error
 		b := tx.Bucket(chartBucket)
@@ -75,7 +80,8 @@ func (r *BoltChartValuesRepository) FindOne(id string) (*ChartValues, error) {
 	return item, nil
 }
 
-func (r *BoltChartValuesRepository) FindByName(name string) (*ChartValues, error) {
+//FindByName returns ChartsValue object by chart name
+func (r *BoltChartValuesRepository) FindByName(name string) (*domain.ChartValues, error) {
 	items, err := r.FindAll()
 	if err != nil {
 		return nil, err
@@ -88,25 +94,25 @@ func (r *BoltChartValuesRepository) FindByName(name string) (*ChartValues, error
 	return nil, nil
 }
 
-func (r *BoltChartValuesRepository) Save(item *ChartValues) (*ChartValues, error) {
+//Save saves ChartValues object to the database
+func (r *BoltChartValuesRepository) Save(item *domain.ChartValues) (*domain.ChartValues, error) {
 	err := r.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(chartBucket)
 		if item.ID == "" {
 			item.ID = bson.NewObjectId()
 			item.CreatedAt = time.Now()
 			item.UpdatedAt = time.Now()
-			enc, err := item.encodeChartValues()
-			if err != nil {
-				return err
-			}
-			return b.Put([]byte(item.ID.Hex()), enc)
-		} else {
-			enc, err := item.encodeChartValues()
+			enc, err := encodeChartValues(item)
 			if err != nil {
 				return err
 			}
 			return b.Put([]byte(item.ID.Hex()), enc)
 		}
+		enc, err := encodeChartValues(item)
+		if err != nil {
+			return err
+		}
+		return b.Put([]byte(item.ID.Hex()), enc)
 	})
 	if err != nil {
 		return nil, err
@@ -115,6 +121,7 @@ func (r *BoltChartValuesRepository) Save(item *ChartValues) (*ChartValues, error
 	return item, nil
 }
 
+//Delete removes ChartValues object from the database
 func (r *BoltChartValuesRepository) Delete(id string) error {
 	item, err := r.FindOne(id)
 	if err != nil {
@@ -130,7 +137,7 @@ func (r *BoltChartValuesRepository) Delete(id string) error {
 	})
 }
 
-func (p *ChartValues) encodeChartValues() ([]byte, error) {
+func encodeChartValues(p *domain.ChartValues) ([]byte, error) {
 	enc, err := json.Marshal(p)
 	if err != nil {
 		return nil, err
@@ -138,8 +145,8 @@ func (p *ChartValues) encodeChartValues() ([]byte, error) {
 	return enc, nil
 }
 
-func decodeChartValues(data []byte) (*ChartValues, error) {
-	var item *ChartValues
+func decodeChartValues(data []byte) (*domain.ChartValues, error) {
+	var item *domain.ChartValues
 	err := json.Unmarshal(data, &item)
 	if err != nil {
 		return nil, err

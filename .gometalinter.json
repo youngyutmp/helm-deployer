@@ -1,0 +1,6 @@
+{
+  "Deadline": "5m",
+  "EnableAll": false,
+  "Enable": ["goimports", "staticcheck", "errcheck", "unused", "vet"],
+  "Skip": ["vendor"]
+}

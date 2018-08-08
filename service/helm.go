@@ -2,26 +2,26 @@ package service
 
 import (
 	"io"
+
+	"github.com/entwico/helm-deployer/domain"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
-type HelmService interface {
-	ListReleases() (*services.ListReleasesResponse, error)
-	UpdateRelease(rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error)
-}
-
+//HelmServiceImpl is an implementation of HelmService interface
 type HelmServiceImpl struct {
 	Client *helm.Client
 }
 
-func NewHelmService(client *helm.Client) *HelmServiceImpl {
+//NewHelmService returns a new instance of HelmService
+func NewHelmService(client *helm.Client) domain.HelmService {
 	return &HelmServiceImpl{
 		Client: client,
 	}
 }
 
+//ListReleases returns all Helm releases
 func (c *HelmServiceImpl) ListReleases() (*services.ListReleasesResponse, error) {
 	response, err := c.Client.ListReleases()
 	if err != nil {
@@ -30,6 +30,7 @@ func (c *HelmServiceImpl) ListReleases() (*services.ListReleasesResponse, error)
 	return response, nil
 }
 
+//UpdateRelease updates helm release
 func (c *HelmServiceImpl) UpdateRelease(rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error) {
 	chart, err := chartutil.LoadArchive(chartData)
 	if err != nil {

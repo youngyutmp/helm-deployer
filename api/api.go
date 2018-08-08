@@ -9,31 +9,24 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/boltdb/bolt"
 	"github.com/entwico/helm-deployer/conf"
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/entwico/helm-deployer/embedded"
 	"github.com/entwico/helm-deployer/enums"
-	"github.com/entwico/helm-deployer/service"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"k8s.io/helm/pkg/helm"
 )
 
 // API is the data holder for the API
 type API struct {
 	config *conf.Config
 	log    *logrus.Entry
-	db     *bolt.DB
 	echo   *echo.Echo
 
-	// Services used by the API
-	chartValues      service.ChartValuesService
-	chartRepository  service.ChartRepositoryService
-	releases         service.ReleaseService
-	webhooks         service.WebhookService
-	webhookCallbacks service.WebhookCallbackService
+	services *domain.Services
 }
 
+// ListResponse for REST API
 type ListResponse struct {
 	Page     int         `json:"page"`
 	PageSize int         `json:"pageSize"`
@@ -41,12 +34,14 @@ type ListResponse struct {
 	Items    interface{} `json:"items"`
 }
 
+// MessageResponse for REST API
 type MessageResponse struct {
-	Status  enums.APIResponseStatus `json:"status"`
-	Message string                  `json:"message"`
-	Errors  []ErrorResponseItem     `json:"errors,omitempty"`
+	Status  enums.ResponseStatus `json:"status"`
+	Message string               `json:"message"`
+	Errors  []ErrorResponseItem  `json:"errors,omitempty"`
 }
 
+// ErrorResponseItem for REST API
 type ErrorResponseItem struct {
 	Field   string `json:"field,omitempty"`
 	Message string `json:"message"`
@@ -66,21 +61,14 @@ func (api *API) Stop() error {
 }
 
 // NewAPI will create an api instance that is ready to start
-func NewAPI(config *conf.Config, db *bolt.DB) *API {
+func NewAPI(config *conf.Config, services *domain.Services) *API {
 	api := &API{
-		config: config,
-		log:    logrus.WithField("component", "api"),
-		db:     db,
+		config:   config,
+		log:      logrus.WithField("component", "api"),
+		services: services,
 	}
 
-	api.chartValues = service.NewChartValuesService(service.NewChartValuesRepository(db))
-	api.chartRepository = service.NewChartRepositoryService(config.ChartRepository.BaseURL)
-	helmService := service.NewHelmService(helm.NewClient(helm.Host(config.Tiller.Host)))
-	api.releases = service.NewReleaseService(helmService)
-	api.webhooks = service.NewWebhookService(service.NewWebhookRepository(db))
-	api.webhookCallbacks = service.NewGitlabWebhookCallbackService(api.webhooks, api.chartRepository, api.chartValues, helmService)
-
-	authConfig := middleware.BasicAuthConfig{Realm:"helm-deployer"}
+	authConfig := middleware.BasicAuthConfig{Realm: "helm-deployer"}
 	authConfig.Validator = func(username, password string, c echo.Context) (bool, error) {
 		if username == config.APP.Username && password == config.APP.Password {
 			return true, nil
@@ -103,7 +91,7 @@ func NewAPI(config *conf.Config, db *bolt.DB) *API {
 	e := echo.New()
 
 	e.HideBanner = true
-	//e.Use(api.logRequest)
+	e.HTTPErrorHandler = api.handleError
 
 	e.GET("/health", api.Health)
 	e.POST("/api/v1/callbacks/gitlab", api.GitlabWebhook)
@@ -159,37 +147,16 @@ func (api *API) frontend404Fallback(next echo.HandlerFunc) echo.HandlerFunc {
 				fileSystem := embedded.FS(false)
 				f, _ := fileSystem.Open("/index.html")
 				buf := bytes.NewBuffer(nil)
-				io.Copy(buf, f)
-				f.Close()
-				c.HTML(http.StatusOK, string(buf.Bytes()))
+				_, _ = io.Copy(buf, f)
+				_ = f.Close()
+				return c.HTML(http.StatusOK, string(buf.Bytes()))
 			}
 		}
 		return nil
 	}
 }
 
-func (api *API) logRequest(f echo.HandlerFunc) echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		req := ctx.Request()
-		logger := api.log.WithFields(logrus.Fields{
-			"method": req.Method,
-			"path":   req.URL.Path,
-		})
-		ctx.Set(loggerKey, logger)
-
-		logger.WithFields(logrus.Fields{
-			"user_agent": req.UserAgent(),
-			"ip_address": ctx.RealIP(),
-		}).Info("Request")
-
-		err := f(ctx)
-		if err != nil {
-			ctx.Error(err)
-		}
-		return err
-	}
-}
-
+//Health returns application health status
 func (api *API) Health(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, map[string]string{"status": "UP"})
 }

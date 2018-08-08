@@ -8,53 +8,44 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/pkg/errors"
 )
 
 const apiPathCharts = "/api/charts"
 
-type ChartRepositoryItem struct {
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	Description string    `json:"description"`
-	APIVersion  string    `json:"apiVersion"`
-	Urls        []string  `json:"urls"`
-	Created     time.Time `json:"created"`
-	Digest      string    `json:"digest"`
-}
-
-type ChartRepositoryService interface {
-	FindAllCharts() ([]ChartRepositoryItem, error)
-	GetChartData(chartName, chartVersion string) ([]byte, error)
-}
-
+//ChartRepositoryServiceImpl is in implementation of ChartRepositoryService
 type ChartRepositoryServiceImpl struct {
-	RepositoryBaseUrl string
-	HttpClient        *http.Client
+	RepositoryBaseURL string
+	HTTPClient        *http.Client
 }
 
-func NewChartRepositoryService(baseUrl string) *ChartRepositoryServiceImpl {
+//NewChartRepositoryService returns a new instance of ChartRepositoryService
+func NewChartRepositoryService(baseURL string) domain.ChartRepositoryService {
 	return &ChartRepositoryServiceImpl{
-		RepositoryBaseUrl: baseUrl,
-		HttpClient:        &http.Client{Timeout: 10 * time.Second},
+		RepositoryBaseURL: baseURL,
+		HTTPClient:        &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (c *ChartRepositoryServiceImpl) FindAllCharts() ([]ChartRepositoryItem, error) {
-	url := fmt.Sprintf("%s%s", c.RepositoryBaseUrl, apiPathCharts)
+//FindAllCharts returns a list of helm charts
+func (c *ChartRepositoryServiceImpl) FindAllCharts() (items []domain.ChartRepositoryItem, err error) {
+	url := fmt.Sprintf("%s%s", c.RepositoryBaseURL, apiPathCharts)
 	logrus.Debugf("Fetching charts list from %s", url)
 	r, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer func() {
+		err = r.Body.Close()
+	}()
 
-	var res map[string][]ChartRepositoryItem
+	var res map[string][]domain.ChartRepositoryItem
 	if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
 		return nil, err
 	}
 
-	items := []ChartRepositoryItem{}
+	items = make([]domain.ChartRepositoryItem, 0)
 	for _, v := range res {
 		for _, i := range v {
 			items = append(items, i)
@@ -64,6 +55,7 @@ func (c *ChartRepositoryServiceImpl) FindAllCharts() ([]ChartRepositoryItem, err
 	return items, nil
 }
 
+//GetChartData returns helm chart binary data
 func (c *ChartRepositoryServiceImpl) GetChartData(chartName, chartVersion string) ([]byte, error) {
 	charts, err := c.FindAllCharts()
 	if err != nil {
@@ -71,13 +63,13 @@ func (c *ChartRepositoryServiceImpl) GetChartData(chartName, chartVersion string
 	}
 	for _, chart := range charts {
 		if chart.Name == chartName && chart.Version == chartVersion {
-			url := fmt.Sprintf("%s/%s", c.RepositoryBaseUrl, chart.Urls[0])
+			url := fmt.Sprintf("%s/%s", c.RepositoryBaseURL, chart.Urls[0])
 			logrus.Debugf("Downloading chart from %s", url)
 			resp, err := http.Get(url)
 			if err != nil {
 				return nil, err
 			}
-			defer resp.Body.Close()
+			_ = resp.Body.Close()
 			return ioutil.ReadAll(resp.Body)
 		}
 	}

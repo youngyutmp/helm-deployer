@@ -18,7 +18,9 @@ func BoltConnect(config *Config) (*bolt.DB, error) {
 
 	closer.Bind(func() {
 		logrus.Info("Closing database file")
-		db.Close()
+		if err := db.Close(); err != nil {
+			logrus.Warnf("Can't close database file: %v", err)
+		}
 	})
 
 	return db, nil

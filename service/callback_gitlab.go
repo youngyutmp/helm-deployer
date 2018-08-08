@@ -2,6 +2,7 @@ package service
 
 import "time"
 
+//WebhookGitlabPipeline struct
 type WebhookGitlabPipeline struct {
 	Builds []struct {
 		ArtifactsFile struct {

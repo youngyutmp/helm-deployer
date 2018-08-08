@@ -5,26 +5,25 @@ import (
 
 	"bytes"
 	"encoding/json"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/domain"
 )
 
 const (
-	gitlabEventPush         = "Push Hook"
-	gitlabEventTag          = "Tag Push Hook"
-	gitlabEventIssue        = "Issue Hook"
-	gitlabEventComment      = "Note Hook"
-	gitlabEventMergeRequest = "Merge Request Hook"
-	gitlabEventWikiPage     = "Wiki Page Hook"
-	gitlabEventPipeline     = "Pipeline Hook"
-	gitlabEventBuild        = "Build Hook"
+	gitlabEventPipeline = "Pipeline Hook"
 )
 
-type WebhookCallbackService interface {
-	ProcessWebhook(webhookType string, webhookBody []byte) error
-	DeployChart(cfg DeployConfig) error
+//GitlabWebhookCallbackService is an implementation of the WebhookCallbackService which reacts to gitlab webhooks
+type GitlabWebhookCallbackService struct {
+	WebhookService         domain.WebhookService
+	ChartRepositoryService domain.ChartRepositoryService
+	ChartValuesService     domain.ChartValuesService
+	HelmService            domain.HelmService
 }
 
-func NewGitlabWebhookCallbackService(webhookSvc WebhookService, chartRepoSvc ChartRepositoryService, chartValuesSvc ChartValuesService, helmSvc HelmService) WebhookCallbackService {
+//NewGitlabWebhookCallbackService returns a new instance of WebhookCallbackService
+func NewGitlabWebhookCallbackService(webhookSvc domain.WebhookService, chartRepoSvc domain.ChartRepositoryService, chartValuesSvc domain.ChartValuesService, helmSvc domain.HelmService) domain.WebhookCallbackService {
 	return &GitlabWebhookCallbackService{
 		WebhookService:         webhookSvc,
 		ChartRepositoryService: chartRepoSvc,
@@ -33,13 +32,7 @@ func NewGitlabWebhookCallbackService(webhookSvc WebhookService, chartRepoSvc Cha
 	}
 }
 
-type GitlabWebhookCallbackService struct {
-	WebhookService         WebhookService
-	ChartRepositoryService ChartRepositoryService
-	ChartValuesService     ChartValuesService
-	HelmService            HelmService
-}
-
+//ProcessWebhook reacts to webhook
 func (c *GitlabWebhookCallbackService) ProcessWebhook(webhookType string, webhookBody []byte) error {
 	switch webhookType {
 	case gitlabEventPipeline:
@@ -50,7 +43,7 @@ func (c *GitlabWebhookCallbackService) ProcessWebhook(webhookType string, webhoo
 		}
 
 		if payload.ObjectAttributes.Status == "success" {
-			cond := WebhookCondition{
+			cond := domain.WebhookCondition{
 				WebhookType:      payload.ObjectKind,
 				ProjectName:      payload.Project.Name,
 				ProjectNamespace: payload.Project.Namespace,
@@ -73,7 +66,7 @@ func (c *GitlabWebhookCallbackService) ProcessWebhook(webhookType string, webhoo
 	return nil
 }
 
-func (c *GitlabWebhookCallbackService) processCondition(cond WebhookCondition) error {
+func (c *GitlabWebhookCallbackService) processCondition(cond domain.WebhookCondition) error {
 	dc, err := c.getDeployConfigs(cond)
 	if err != nil {
 		return err
@@ -89,12 +82,12 @@ func (c *GitlabWebhookCallbackService) processCondition(cond WebhookCondition) e
 	return nil
 }
 
-func (c *GitlabWebhookCallbackService) getDeployConfigs(cond WebhookCondition) ([]DeployConfig, error) {
+func (c *GitlabWebhookCallbackService) getDeployConfigs(cond domain.WebhookCondition) ([]domain.DeployConfig, error) {
 	webhooks, err := c.WebhookService.FindAll()
 	if err != nil {
 		return nil, err
 	}
-	var dc []DeployConfig
+	var dc []domain.DeployConfig
 	for _, w := range webhooks {
 		if w.Condition == cond {
 			dc = append(dc, w.DeployConfig)
@@ -104,12 +97,13 @@ func (c *GitlabWebhookCallbackService) getDeployConfigs(cond WebhookCondition) (
 	return dc, nil
 }
 
-func (c *GitlabWebhookCallbackService) DeployChart(cfg DeployConfig) error {
+//DeployChart deploys the helm chart
+func (c *GitlabWebhookCallbackService) DeployChart(cfg domain.DeployConfig) error {
 	logrus.Debugf("Deploying chart %s %s", cfg.ChartName, cfg.ChartVersion)
 
 	var rawVals []byte
-	if cfg.ChartValuesId != nil {
-		values, err := c.ChartValuesService.FindOne(*cfg.ChartValuesId)
+	if cfg.ChartValuesID != nil {
+		values, err := c.ChartValuesService.FindOne(*cfg.ChartValuesID)
 		if err != nil {
 			return err
 		}

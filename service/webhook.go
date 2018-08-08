@@ -3,67 +3,40 @@ package service
 import (
 	"time"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/pkg/errors"
 )
 
-type Webhook struct {
-	ID           bson.ObjectId    `json:"id"`
-	Name         string           `json:"name"`
-	Description  string           `json:"description,omitempty"`
-	Condition    WebhookCondition `json:"condition"`
-	DeployConfig DeployConfig     `json:"deployConfig"`
-	CreatedAt    time.Time        `json:"createdAt"`
-	UpdatedAt    time.Time        `json:"updatedAt"`
-}
-
-type WebhookCondition struct {
-	WebhookType      string `json:"webhookType"`
-	ProjectName      string `json:"projectName"`
-	ProjectNamespace string `json:"projectNamespace"`
-	GitRef           string `json:"gitRef"`
-	IsTag            bool   `json:"isTag"`
-}
-
-type DeployConfig struct {
-	ReleaseName   string  `json:"releaseName"`
-	ChartName     string  `json:"chartName"`
-	ChartVersion  string  `json:"chartVersion"`
-	ChartValuesId *string `json:"chartValuesId"`
-}
-
-type WebhookService interface {
-	FindAll() ([]Webhook, error)
-	FindOne(id string) (*Webhook, error)
-	Create(item *Webhook) (*Webhook, error)
-	Update(id string, newItem *Webhook) (*Webhook, error)
-	Delete(id string) error
-}
-
+//WebhookServiceImpl is an implementation of the WebhookService interface
 type WebhookServiceImpl struct {
-	Repository WebhookRepository
+	Repository domain.WebhookRepository
 }
 
-func NewWebhookService(repository WebhookRepository) *WebhookServiceImpl {
+//NewWebhookService returns a new instance of WebhookService
+func NewWebhookService(repository domain.WebhookRepository) domain.WebhookService {
 	return &WebhookServiceImpl{
 		Repository: repository,
 	}
 }
 
-func (c *WebhookServiceImpl) FindAll() ([]Webhook, error) {
+//FindAll returns all Webhook objects
+func (c *WebhookServiceImpl) FindAll() ([]domain.Webhook, error) {
 	return c.Repository.FindAll()
 }
 
-func (c *WebhookServiceImpl) FindOne(id string) (*Webhook, error) {
+//FindOne returns Webhook by its id
+func (c *WebhookServiceImpl) FindOne(id string) (*domain.Webhook, error) {
 	return c.Repository.FindOne(id)
 }
 
-func (c *WebhookServiceImpl) Create(item *Webhook) (*Webhook, error) {
+//Create creates new Webhook
+func (c *WebhookServiceImpl) Create(item *domain.Webhook) (*domain.Webhook, error) {
 	item.ID = ""
 	return c.Repository.Save(item)
 }
 
-func (c *WebhookServiceImpl) Update(id string, newItem *Webhook) (*Webhook, error) {
+//Update updates existing Webhook
+func (c *WebhookServiceImpl) Update(id string, newItem *domain.Webhook) (*domain.Webhook, error) {
 	item, err := c.Repository.FindOne(id)
 	if err != nil {
 		return nil, err
@@ -80,6 +53,7 @@ func (c *WebhookServiceImpl) Update(id string, newItem *Webhook) (*Webhook, erro
 	return c.Repository.Save(item)
 }
 
+//Delete removes Webhook
 func (c *WebhookServiceImpl) Delete(id string) error {
 	return c.Repository.Delete(id)
 }

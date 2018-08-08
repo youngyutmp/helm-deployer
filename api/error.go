@@ -13,10 +13,10 @@ func (api *API) handleError(err error, ctx echo.Context) {
 
 	httpErr, ok := err.(*echo.HTTPError)
 	if ok {
-		ctx.JSON(httpErr.Code, httpErr)
+		_ = ctx.JSON(httpErr.Code, httpErr)
 	} else {
 		api.log.WithError(err).Warn("Unexpected non http error")
-		ctx.JSON(http.StatusInternalServerError, &echo.HTTPError{
+		_ = ctx.JSON(http.StatusInternalServerError, &echo.HTTPError{
 			Code:    http.StatusInternalServerError,
 			Message: "Internal server error",
 		})

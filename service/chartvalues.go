@@ -4,53 +4,41 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
-type ChartValues struct {
-	ID          bson.ObjectId `json:"id"`
-	Name        string        `json:"name"`
-	Description string        `json:"description,omitempty"`
-	ChartName   string        `json:"chartName"`
-	Data        string        `json:"data"`
-	CreatedAt   time.Time     `json:"createdAt"`
-	UpdatedAt   time.Time     `json:"updatedAt"`
-}
-
-type ChartValuesService interface {
-	FindAll() ([]ChartValues, error)
-	FindOne(id string) (*ChartValues, error)
-	Create(item *ChartValues) (*ChartValues, error)
-	Update(id string, newItem *ChartValues) (*ChartValues, error)
-	Delete(id string) error
-}
-
+//ChartValuesServiceImpl is an implementation of ChartValuesService interface
 type ChartValuesServiceImpl struct {
-	Repository ChartValuesRepository
+	Repository domain.ChartValuesRepository
 }
 
-func NewChartValuesService(repository ChartValuesRepository) *ChartValuesServiceImpl {
+//NewChartValuesService returns new instance of ChartValuesService
+func NewChartValuesService(repository domain.ChartValuesRepository) domain.ChartValuesService {
 	return &ChartValuesServiceImpl{
 		Repository: repository,
 	}
 }
 
-func (c *ChartValuesServiceImpl) FindAll() ([]ChartValues, error) {
+//FindAll returns all ChartValues objects
+func (c *ChartValuesServiceImpl) FindAll() ([]domain.ChartValues, error) {
 	return c.Repository.FindAll()
 }
 
-func (c *ChartValuesServiceImpl) FindOne(id string) (*ChartValues, error) {
+//FindOne returns ChartValues object by its id
+func (c *ChartValuesServiceImpl) FindOne(id string) (*domain.ChartValues, error) {
 	return c.Repository.FindOne(id)
 }
 
-func (c *ChartValuesServiceImpl) Create(item *ChartValues) (*ChartValues, error) {
+//Create creates new ChartValues object
+func (c *ChartValuesServiceImpl) Create(item *domain.ChartValues) (*domain.ChartValues, error) {
 	item.ID = ""
 	return c.Repository.Save(item)
 }
 
-func (c *ChartValuesServiceImpl) Update(id string, newItem *ChartValues) (*ChartValues, error) {
+//Update updates existing ChartValues object
+func (c *ChartValuesServiceImpl) Update(id string, newItem *domain.ChartValues) (*domain.ChartValues, error) {
 	item, err := c.Repository.FindOne(id)
 	if err != nil {
 		return nil, err
@@ -70,6 +58,7 @@ func (c *ChartValuesServiceImpl) Update(id string, newItem *ChartValues) (*Chart
 	return c.Repository.Save(item)
 }
 
+//Delete deletes ChartValues object
 func (c *ChartValuesServiceImpl) Delete(id string) error {
 	return c.Repository.Delete(id)
 }

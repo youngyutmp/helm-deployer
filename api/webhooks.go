@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/entwico/helm-deployer/domain"
 	"github.com/entwico/helm-deployer/enums"
-	"github.com/entwico/helm-deployer/service"
 	"github.com/labstack/echo"
 )
 
+//ListWebhooks returns a list of Webhook objects
 func (api *API) ListWebhooks(ctx echo.Context) error {
 	var err error
 
-	items, err := api.webhooks.FindAll()
+	items, err := api.services.WebhookService.FindAll()
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
@@ -21,13 +22,14 @@ func (api *API) ListWebhooks(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, response)
 }
 
+//CreateWebhook creates new WebHook
 func (api *API) CreateWebhook(ctx echo.Context) error {
-	item := new(service.Webhook)
+	item := new(domain.Webhook)
 	if err := ctx.Bind(item); err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
-	item, err := api.webhooks.Create(item)
+	item, err := api.services.WebhookService.Create(item)
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
@@ -36,9 +38,10 @@ func (api *API) CreateWebhook(ctx echo.Context) error {
 
 }
 
+//GetWebhook returns existing Webhook
 func (api *API) GetWebhook(ctx echo.Context) error {
 	id := ctx.Param("id")
-	item, err := api.webhooks.FindOne(id)
+	item, err := api.services.WebhookService.FindOne(id)
 
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
@@ -52,14 +55,15 @@ func (api *API) GetWebhook(ctx echo.Context) error {
 
 }
 
+//UpdateWebhook updates Webhook
 func (api *API) UpdateWebhook(ctx echo.Context) error {
 	id := ctx.Param("id")
-	newItem := new(service.Webhook)
+	newItem := new(domain.Webhook)
 	if err := ctx.Bind(newItem); err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusBadRequest, response)
 	}
-	item, err := api.webhooks.Update(id, newItem)
+	item, err := api.services.WebhookService.Update(id, newItem)
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
@@ -68,9 +72,10 @@ func (api *API) UpdateWebhook(ctx echo.Context) error {
 
 }
 
+//DeleteWebhook deletes Webhook
 func (api *API) DeleteWebhook(ctx echo.Context) error {
 	id := ctx.Param("id")
-	err := api.webhooks.Delete(id)
+	err := api.services.WebhookService.Delete(id)
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
@@ -79,9 +84,10 @@ func (api *API) DeleteWebhook(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, response)
 }
 
+//ForceDeploy forces chart redeploy
 func (api *API) ForceDeploy(ctx echo.Context) error {
 	id := ctx.Param("id")
-	w, err := api.webhooks.FindOne(id)
+	w, err := api.services.WebhookService.FindOne(id)
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
@@ -90,7 +96,7 @@ func (api *API) ForceDeploy(ctx echo.Context) error {
 		response := &MessageResponse{Status: enums.Error, Message: fmt.Sprintf("webhook %s not found", id)}
 		return ctx.JSON(http.StatusNotFound, response)
 	}
-	err = api.webhookCallbacks.DeployChart(w.DeployConfig)
+	err = api.services.WebhookCallbackService.DeployChart(w.DeployConfig)
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)

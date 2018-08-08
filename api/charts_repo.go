@@ -7,10 +7,11 @@ import (
 	"github.com/labstack/echo"
 )
 
+//ListChartItems returns list of Charts
 func (api *API) ListChartItems(ctx echo.Context) error {
 	var err error
 
-	items, err := api.chartRepository.FindAllCharts()
+	items, err := api.services.ChartRepositoryService.FindAllCharts()
 	if err != nil {
 		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
