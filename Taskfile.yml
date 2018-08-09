@@ -8,7 +8,7 @@ vars:
   BUILD_DIR: build
   BUILDTAGS: ""
   GOX_OUTPUT: "{{.BUILD_DIR}}/{{`{{.OS}}_{{.Arch}}_{{.Dir}}`}}"
-  DIST_USER: andrexus
+  DIST_USER: entwico
   GIT_VERSION:
     sh: git describe --abbrev=0 --tags 2> /dev/null || git rev-parse HEAD
   GOTOOLS: >
