@@ -3,22 +3,24 @@ package domain
 import (
 	"time"
 
+	"net/http"
+
 	"github.com/globalsign/mgo/bson"
 )
 
 //Webhook defines webhook structure
 type Webhook struct {
-	ID           bson.ObjectId    `json:"id"`
-	Name         string           `json:"name"`
-	Description  string           `json:"description,omitempty"`
-	Condition    WebhookCondition `json:"condition"`
-	DeployConfig DeployConfig     `json:"deployConfig"`
-	CreatedAt    time.Time        `json:"createdAt"`
-	UpdatedAt    time.Time        `json:"updatedAt"`
+	ID           bson.ObjectId          `json:"id"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description,omitempty"`
+	Condition    GitlabWebhookCondition `json:"condition"`
+	DeployConfig DeployConfig           `json:"deployConfig"`
+	CreatedAt    time.Time              `json:"createdAt"`
+	UpdatedAt    time.Time              `json:"updatedAt"`
 }
 
-//WebhookCondition defines webhook condition structure
-type WebhookCondition struct {
+//GitlabWebhookCondition defines webhook condition structure
+type GitlabWebhookCondition struct {
 	WebhookType      string `json:"webhookType"`
 	ProjectName      string `json:"projectName"`
 	ProjectNamespace string `json:"projectNamespace"`
@@ -50,4 +52,19 @@ type WebhookRepository interface {
 	FindByName(name string) (*Webhook, error)
 	Save(item *Webhook) (*Webhook, error)
 	Delete(id string) error
+}
+
+//WebhookDispatcher handles webhooks
+type WebhookDispatcher interface {
+	GetWebhookProcessor(headers http.Header, body []byte) (WebhookProcessor, error)
+	StartHandleDeployConfigEvents()
+}
+
+//WebhookProcessor listens to Webhooks and deploys charts
+type WebhookProcessor interface {
+	//DetermineWebhookType(headers http.Header) (enums.WebhookType, error)
+	//DeployChart(cfg DeployConfig) error
+	CanProcess(headers http.Header, body []byte) bool
+	Process(headers http.Header, body []byte) error
+	GetDeployConfigEvents() chan DeployConfig
 }

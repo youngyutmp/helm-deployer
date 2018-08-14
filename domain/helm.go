@@ -10,4 +10,5 @@ import (
 type HelmService interface {
 	ListReleases() (*services.ListReleasesResponse, error)
 	UpdateRelease(rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error)
+	DeployChart(cfg DeployConfig) error
 }

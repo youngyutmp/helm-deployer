@@ -9,20 +9,19 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-//ReleaseServiceImpl is an implementation of ReleaseService
-type ReleaseServiceImpl struct {
+type releaseServiceImpl struct {
 	HelmService domain.HelmService
 }
 
 //NewReleaseService returns a new instance of ReleaseService
 func NewReleaseService(helmService domain.HelmService) domain.ReleaseService {
-	return &ReleaseServiceImpl{
+	return &releaseServiceImpl{
 		HelmService: helmService,
 	}
 }
 
 //ListReleases returns a list of all installed releases
-func (c *ReleaseServiceImpl) ListReleases() ([]domain.Release, error) {
+func (c *releaseServiceImpl) ListReleases() ([]domain.Release, error) {
 	logrus.Debug("Getting all releases")
 
 	r, err := c.HelmService.ListReleases()
@@ -73,7 +72,7 @@ func (c *ReleaseServiceImpl) ListReleases() ([]domain.Release, error) {
 }
 
 //UpdateRelease updates helm release
-func (c *ReleaseServiceImpl) UpdateRelease(r *domain.ReleaseUpdateRequest) error {
+func (c *releaseServiceImpl) UpdateRelease(r *domain.ReleaseUpdateRequest) error {
 	logrus.Debugf("Updating release %s", r.Name)
 	response, err := http.Get(r.ChartURL)
 	if err != nil {

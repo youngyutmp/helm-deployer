@@ -14,7 +14,7 @@ func (api *API) ListChartValues(ctx echo.Context) error {
 
 	items, err := api.services.ChartValuesService.FindAll()
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &ListResponse{Page: 1, PageSize: len(items), Total: len(items), Items: items}
@@ -25,12 +25,12 @@ func (api *API) ListChartValues(ctx echo.Context) error {
 func (api *API) CreateChartValues(ctx echo.Context) error {
 	item := new(domain.ChartValues)
 	if err := ctx.Bind(item); err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	item, err := api.services.ChartValuesService.Create(item)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	return ctx.JSON(http.StatusCreated, item)
@@ -43,11 +43,11 @@ func (api *API) GetChartValues(ctx echo.Context) error {
 	item, err := api.services.ChartValuesService.FindOne(id)
 
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	if item == nil {
-		response := &MessageResponse{Status: enums.Error, Message: "item not found"}
+		response := &MessageResponse{Status: enums.StatusError, Message: "item not found"}
 		return ctx.JSON(http.StatusNotFound, response)
 	}
 	return ctx.JSON(http.StatusOK, item)
@@ -59,12 +59,12 @@ func (api *API) UpdateChartValues(ctx echo.Context) error {
 	id := ctx.Param("id")
 	newItem := new(domain.ChartValues)
 	if err := ctx.Bind(newItem); err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusBadRequest, response)
 	}
 	item, err := api.services.ChartValuesService.Update(id, newItem)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	return ctx.JSON(http.StatusOK, item)
@@ -76,7 +76,7 @@ func (api *API) DeleteChartValues(ctx echo.Context) error {
 	id := ctx.Param("id")
 	err := api.services.ChartValuesService.Delete(id)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &MessageResponse{Message: "item deleted"}

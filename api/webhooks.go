@@ -15,7 +15,7 @@ func (api *API) ListWebhooks(ctx echo.Context) error {
 
 	items, err := api.services.WebhookService.FindAll()
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &ListResponse{Page: 1, PageSize: len(items), Total: len(items), Items: items}
@@ -26,12 +26,12 @@ func (api *API) ListWebhooks(ctx echo.Context) error {
 func (api *API) CreateWebhook(ctx echo.Context) error {
 	item := new(domain.Webhook)
 	if err := ctx.Bind(item); err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	item, err := api.services.WebhookService.Create(item)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	return ctx.JSON(http.StatusCreated, item)
@@ -44,11 +44,11 @@ func (api *API) GetWebhook(ctx echo.Context) error {
 	item, err := api.services.WebhookService.FindOne(id)
 
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	if item == nil {
-		response := &MessageResponse{Status: enums.Error, Message: "item not found"}
+		response := &MessageResponse{Status: enums.StatusError, Message: "item not found"}
 		return ctx.JSON(http.StatusNotFound, response)
 	}
 	return ctx.JSON(http.StatusOK, item)
@@ -60,12 +60,12 @@ func (api *API) UpdateWebhook(ctx echo.Context) error {
 	id := ctx.Param("id")
 	newItem := new(domain.Webhook)
 	if err := ctx.Bind(newItem); err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusBadRequest, response)
 	}
 	item, err := api.services.WebhookService.Update(id, newItem)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	return ctx.JSON(http.StatusOK, item)
@@ -77,7 +77,7 @@ func (api *API) DeleteWebhook(ctx echo.Context) error {
 	id := ctx.Param("id")
 	err := api.services.WebhookService.Delete(id)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &MessageResponse{Message: "item deleted"}
@@ -89,16 +89,17 @@ func (api *API) ForceDeploy(ctx echo.Context) error {
 	id := ctx.Param("id")
 	w, err := api.services.WebhookService.FindOne(id)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	if w == nil {
-		response := &MessageResponse{Status: enums.Error, Message: fmt.Sprintf("webhook %s not found", id)}
+		response := &MessageResponse{Status: enums.StatusError, Message: fmt.Sprintf("webhook %s not found", id)}
 		return ctx.JSON(http.StatusNotFound, response)
 	}
-	err = api.services.WebhookCallbackService.DeployChart(w.DeployConfig)
+
+	err = api.services.HelmService.DeployChart(w.DeployConfig)
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &MessageResponse{Message: fmt.Sprintf("deploy for %s dispatched", w.DeployConfig.ReleaseName)}

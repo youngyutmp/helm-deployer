@@ -64,13 +64,16 @@ func (c *ChartRepositoryServiceImpl) GetChartData(chartName, chartVersion string
 	for _, chart := range charts {
 		if chart.Name == chartName && chart.Version == chartVersion {
 			url := fmt.Sprintf("%s/%s", c.RepositoryBaseURL, chart.Urls[0])
-			logrus.Debugf("Downloading chart from %s", url)
+			logrus.Debugf("downloading chart from %s", url)
 			resp, err := http.Get(url)
 			if err != nil {
 				return nil, err
 			}
-			_ = resp.Body.Close()
-			return ioutil.ReadAll(resp.Body)
+			data, err := ioutil.ReadAll(resp.Body)
+			if err := resp.Body.Close(); err != nil {
+				return nil, err
+			}
+			return data, err
 		}
 	}
 	return nil, errors.New("chart not found")

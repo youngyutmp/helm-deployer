@@ -4,7 +4,9 @@ package domain
 type Services struct {
 	ChartValuesService     ChartValuesService
 	ChartRepositoryService ChartRepositoryService
+	HelmService            HelmService
+	K8SReleaseProvider     K8SReleaseProvider
 	ReleaseService         ReleaseService
 	WebhookService         WebhookService
-	WebhookCallbackService WebhookCallbackService
+	WebhookDispatcher      WebhookDispatcher
 }

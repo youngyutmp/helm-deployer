@@ -54,7 +54,7 @@ func (api *API) Start() error {
 
 // Stop will shutdown the engine internally
 func (api *API) Stop() error {
-	logrus.Info("Stopping API server")
+	logrus.Info("stopping API server")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return api.echo.Shutdown(ctx)
@@ -77,7 +77,7 @@ func NewAPI(config *conf.Config, services *domain.Services) *API {
 	}
 	skipAuth := config.APP.Username == "" && config.APP.Password == ""
 	if skipAuth {
-		logrus.Debugf("Basic Auth credentials are not configured")
+		logrus.Debugf("basic auth credentials are not configured")
 	}
 	authConfig.Skipper = func(c echo.Context) bool {
 		if skipAuth {
@@ -94,7 +94,8 @@ func NewAPI(config *conf.Config, services *domain.Services) *API {
 	e.HTTPErrorHandler = api.handleError
 
 	e.GET("/health", api.Health)
-	e.POST("/api/v1/callbacks/gitlab", api.GitlabWebhook)
+	e.POST("/api/v1/callbacks", api.ProcessWebhook)
+	e.POST("/api/v1/callbacks/:name", api.ProcessWebhook)
 
 	g := e.Group("/api/v1", basicAuth)
 

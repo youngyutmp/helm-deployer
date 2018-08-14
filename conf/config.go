@@ -31,6 +31,10 @@ type Config struct {
 		Path string `mapstructure:"path" json:"path"`
 	} `mapstructure:"db" json:"db"`
 
+	K8S struct {
+		ConfigPath string `configPath:"host" json:"configPath"`
+	} `mapstructure:"k8s" json:"k8s"`
+
 	LogConfig struct {
 		Level string `mapstructure:"level"`
 		File  string `mapstructure:"file"`

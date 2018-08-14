@@ -13,7 +13,7 @@ func (api *API) ListChartItems(ctx echo.Context) error {
 
 	items, err := api.services.ChartRepositoryService.FindAllCharts()
 	if err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
 		return ctx.JSON(http.StatusInternalServerError, response)
 	}
 	response := &ListResponse{Page: 1, PageSize: len(items), Total: len(items), Items: items}

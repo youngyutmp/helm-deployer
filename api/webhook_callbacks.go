@@ -1,38 +1,33 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"io/ioutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/entwico/helm-deployer/enums"
 	"github.com/labstack/echo"
 )
 
-const headerWebhookGitlab = "X-Gitlab-Event"
-
-//GitlabWebhook listens to webhooks from gitlab
-func (api *API) GitlabWebhook(ctx echo.Context) error {
-
-	data := new(map[string]interface{})
-	if err := ctx.Bind(data); err != nil {
-		response := &MessageResponse{Status: enums.Error, Message: err.Error()}
-		return ctx.JSON(http.StatusBadRequest, response)
+//ProcessWebhook listens to webhooks
+func (api *API) ProcessWebhook(c echo.Context) error {
+	data, err := ioutil.ReadAll(c.Request().Body)
+	if err != nil {
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
+		return c.JSON(http.StatusBadRequest, response)
 	}
-	bytes, e := json.Marshal(data)
-	if e != nil {
-		response := &MessageResponse{Status: enums.Error, Message: e.Error()}
-		return ctx.JSON(http.StatusBadRequest, response)
+	defer func() { _ = c.Request().Body.Close() }()
+	p, err := api.services.WebhookDispatcher.GetWebhookProcessor(c.Request().Header, data)
+	if err != nil {
+		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
+		return c.JSON(http.StatusBadRequest, response)
 	}
-	webhookType := ctx.Request().Header.Get(headerWebhookGitlab)
-	logrus.Info(fmt.Sprintf("Received new gitlab webhook. Type: %s", webhookType))
-	logrus.Debug(string(bytes))
+
 	go func() {
-		if err := api.services.WebhookCallbackService.ProcessWebhook(webhookType, bytes); err != nil {
-			logrus.Warnf("Can't process webhook: %v", err)
+		if err := p.Process(c.Request().Header, data); err != nil {
+			logrus.Warnf("could not process webhook: %v", err)
 		}
 	}()
-	response := &MessageResponse{Message: "dispatched"}
-	return ctx.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, &MessageResponse{Message: "ok"})
 }

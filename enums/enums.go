@@ -4,8 +4,8 @@ package enums
 type ResponseStatus int
 
 const (
-	// Success response
-	Success ResponseStatus = iota
-	// Error response
-	Error
+	// StatusSuccess defines successful response
+	StatusSuccess ResponseStatus = iota
+	// StatusError defines failed response
+	StatusError
 )
