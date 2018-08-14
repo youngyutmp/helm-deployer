@@ -70,11 +70,13 @@ func (p *nexusWebhookProcessor) processAssetEvent(body []byte) error {
 	if tag != "" {
 		imagePath := fmt.Sprintf("%s:%s", path, tag)
 		logrus.Debugf("image %s updated in repository %s", imagePath, payload.RepositoryName)
-		cfg, err := p.releaseProvider.GetDeployConfigForImagePath(imagePath)
+		deployConfigs, err := p.releaseProvider.GetDeployConfigsForImagePath(imagePath)
 		if err != nil {
 			return err
 		}
-		p.events <- *cfg
+		for _, cfg := range deployConfigs {
+			p.events <- *cfg
+		}
 	}
 
 	return nil

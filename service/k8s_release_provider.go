@@ -9,7 +9,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/entwico/helm-deployer/domain"
-	"github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	extensionsV1 "k8s.io/api/extensions/v1beta1"
@@ -87,19 +86,19 @@ func (s *k8sReleaseProvider) getInformers() []cache.Controller {
 	return informers
 }
 
-func (s *k8sReleaseProvider) GetDeployConfigForImagePath(path string) (*domain.DeployConfig, error) {
+func (s *k8sReleaseProvider) GetDeployConfigsForImagePath(path string) ([]*domain.DeployConfig, error) {
 	logrus.Debugf("searching for deploy config for image %s", path)
-
+	results := make([]*domain.DeployConfig, 0)
 	for name, managedRelease := range s.managedReleases {
 		for _, image := range managedRelease.images {
 			if strings.HasSuffix(image, path) {
 				logrus.Debugf("release %s found for image path %s", name, path)
-				return managedRelease.cfg, nil
+				results = append(results, managedRelease.cfg)
 			}
 		}
 	}
 
-	return nil, errors.New("no deployments found")
+	return results, nil
 }
 func extractDeployConfig(labels map[string]string) (*domain.DeployConfig, error) {
 	var chart, release string
