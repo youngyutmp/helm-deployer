@@ -65,6 +65,9 @@ func (p *nexusWebhookProcessor) processAssetEvent(body []byte) error {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return err
 	}
+	if payload.Asset.Format != "docker" || !(payload.Action == "UPDATED" || payload.Action == "CREATED") {
+		return nil
+	}
 
 	path, tag := payload.GetRepositoryPathAndTag()
 	if tag != "" {
