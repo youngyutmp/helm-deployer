@@ -66,7 +66,7 @@ func (p *nexusWebhookProcessor) processAssetEvent(body []byte) error {
 		return err
 	}
 	if payload.Asset.Format != "docker" || !(payload.Action == "UPDATED" || payload.Action == "CREATED") {
-		logrus.Debug("ignoring asset event for action [%s], format [%s]", payload.Action, payload.Asset.Format)
+		logrus.Debugf("ignoring asset event for action [%s], format [%s]", payload.Action, payload.Asset.Format)
 		return nil
 	}
 
