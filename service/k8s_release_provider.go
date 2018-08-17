@@ -87,7 +87,7 @@ func (s *k8sReleaseProvider) getInformers() []cache.Controller {
 }
 
 func (s *k8sReleaseProvider) GetDeployConfigsForImagePath(path string) ([]*domain.DeployConfig, error) {
-	logrus.Debugf("searching for deploy config for image %s", path)
+	logrus.Debugf("searching for deploy configs for image %s", path)
 	results := make([]*domain.DeployConfig, 0)
 	for name, managedRelease := range s.managedReleases {
 		for _, image := range managedRelease.images {
@@ -96,6 +96,9 @@ func (s *k8sReleaseProvider) GetDeployConfigsForImagePath(path string) ([]*domai
 				results = append(results, managedRelease.cfg)
 			}
 		}
+	}
+	if len(results) == 0 {
+		logrus.Warnf("no deploy configs found for image path %s", path)
 	}
 
 	return results, nil
