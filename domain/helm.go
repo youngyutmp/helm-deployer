@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"io"
 
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -8,7 +9,7 @@ import (
 
 //HelmService interface
 type HelmService interface {
-	ListReleases() (*services.ListReleasesResponse, error)
-	UpdateRelease(rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error)
-	DeployChart(cfg DeployConfig) error
+	ListReleases(ctx context.Context) (*services.ListReleasesResponse, error)
+	UpdateRelease(ctx context.Context, rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error)
+	DeployChart(ctx context.Context, cfg DeployConfig) error
 }

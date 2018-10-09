@@ -8,13 +8,17 @@ import (
 
 var version = "unset"
 
-var versionCmd = cobra.Command{
-	Run:   showVersion,
+var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
 	Long:  "Show current application version",
+	Run:   showVersion,
 }
 
-func showVersion(cmd *cobra.Command, args []string) {
-	fmt.Println(version)
+func init() {
+	rootCmd.AddCommand(versionCmd)
+}
+
+func showVersion(_ *cobra.Command, _ []string) {
+	fmt.Printf("Version: %s\n", version)
 }

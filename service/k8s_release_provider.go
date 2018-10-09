@@ -3,12 +3,11 @@ package service
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	"sync"
-
-	"github.com/Sirupsen/logrus"
 	"github.com/entwico/helm-deployer/domain"
+	log "github.com/sirupsen/logrus"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	extensionsV1 "k8s.io/api/extensions/v1beta1"
@@ -28,23 +27,24 @@ type managedRelease struct {
 
 type k8sReleaseProvider struct {
 	client          *kubernetes.Clientset
+	logger          *log.Entry
 	managedReleases map[string]*managedRelease
 	mutex           sync.Mutex
 }
 
 //NewK8SReleaseProvider returns new instance of K8SReleaseProvider
-func NewK8SReleaseProvider(k8sConfigPath string) (domain.K8SReleaseProvider, error) {
-	client, err := getClient(k8sConfigPath)
+func NewK8SReleaseProvider(k8sConfigPath string, logger *log.Entry) (domain.K8SReleaseProvider, error) {
+	client, err := getClient(k8sConfigPath, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	return &k8sReleaseProvider{client: client, managedReleases: make(map[string]*managedRelease)}, nil
+	return &k8sReleaseProvider{client: client, logger: logger, managedReleases: make(map[string]*managedRelease)}, nil
 }
 
 func (s *k8sReleaseProvider) Start() {
 	stop := make(chan struct{})
-	logrus.Debug("start informers...")
+	s.logger.Debug("start informers...")
 	for _, item := range s.getInformers() {
 		go func(informer cache.Controller) {
 			informer.Run(stop)
@@ -87,18 +87,21 @@ func (s *k8sReleaseProvider) getInformers() []cache.Controller {
 }
 
 func (s *k8sReleaseProvider) GetDeployConfigsForImagePath(path string) ([]*domain.DeployConfig, error) {
-	logrus.Debugf("searching for deploy configs for image %s", path)
+	s.logger.WithField("image_path", path).Debug("searching for deploy configs")
 	results := make([]*domain.DeployConfig, 0)
 	for name, managedRelease := range s.managedReleases {
 		for _, image := range managedRelease.images {
 			if strings.HasSuffix(image, path) {
-				logrus.Debugf("release %s found for image path %s", name, path)
+				s.logger.WithFields(log.Fields{
+					"name": name,
+					"path": path,
+				}).Debug("release found for image path")
 				results = append(results, managedRelease.cfg)
 			}
 		}
 	}
 	if len(results) == 0 {
-		logrus.Warnf("no deploy configs found for image path %s", path)
+		s.logger.WithField("image_path", path).Warn("no deploy configs found for image path")
 	}
 
 	return results, nil
@@ -108,7 +111,13 @@ func extractDeployConfig(labels map[string]string) (*domain.DeployConfig, error)
 	if val, ok := labels["chart"]; ok {
 		chart = val
 	}
+	if val, ok := labels["helm.sh/chart"]; ok {
+		chart = val
+	}
 	if val, ok := labels["release"]; ok {
+		release = val
+	}
+	if val, ok := labels["app.kubernetes.io/instance"]; ok {
 		release = val
 	}
 	if chart == "" || release == "" {
@@ -131,15 +140,15 @@ func extractDeployConfig(labels map[string]string) (*domain.DeployConfig, error)
 	return cfg, nil
 }
 
-func getClient(k8sConfigPath string) (*kubernetes.Clientset, error) {
+func getClient(k8sConfigPath string, logger *log.Entry) (*kubernetes.Clientset, error) {
 	var config *rest.Config
 	var err error
 	if k8sConfigPath == "" {
-		logrus.Info("using in cluster config")
+		logger.Info("using in cluster config")
 		config, err = rest.InClusterConfig()
 		// in cluster access
 	} else {
-		logrus.Info("using out of cluster config")
+		logger.Info("using out of cluster config")
 		config, err = clientcmd.BuildConfigFromFlags("", k8sConfigPath)
 	}
 	if err != nil {
@@ -166,7 +175,7 @@ func (s *k8sReleaseProvider) extractManagedRelease(obj interface{}) *managedRele
 		meta := acc.GetObjectMeta()
 		cfg, err := extractDeployConfig(meta.GetLabels())
 		if err != nil {
-			logrus.Warnf("could not extract deploy config: %s", err)
+			s.logger.WithField("error", err).Warning("could not extract deploy config")
 			return nil
 		}
 		return &managedRelease{cfg: cfg}
@@ -179,7 +188,7 @@ func (s *k8sReleaseProvider) getImages(obj interface{}) []string {
 	switch item := obj.(type) {
 	case *appsV1.Deployment:
 		for _, container := range item.Spec.Template.Spec.Containers {
-			logrus.Debugf("found image %s", container.Image)
+			s.logger.WithField("image", container.Image).Debug("image found")
 			images = append(images, container.Image)
 		}
 	case *extensionsV1.Ingress:
@@ -187,7 +196,7 @@ func (s *k8sReleaseProvider) getImages(obj interface{}) []string {
 	case *coreV1.Service:
 		images = append(images, s.extractImagesFromService(item)...)
 	default:
-		logrus.Warnf("unable to get images from %T!", item)
+		s.logger.WithField("item", fmt.Sprintf("%T!", item)).Warn("unable to get images")
 	}
 	return images
 }
@@ -199,7 +208,10 @@ func (s *k8sReleaseProvider) extractImagesFromIngres(item *extensionsV1.Ingress)
 			serviceName := path.Backend.ServiceName
 			svc, err := s.client.CoreV1().Services(item.Namespace).Get(serviceName, metaV1.GetOptions{})
 			if err != nil {
-				logrus.Warnf("could not get service for name %s: %v", serviceName, err)
+				s.logger.WithFields(log.Fields{
+					"service_name": serviceName,
+					"error":        err,
+				}).Warn("could not get service")
 			}
 			for _, image := range s.extractImagesFromService(svc) {
 				imgMap[image] = true
@@ -218,7 +230,7 @@ func (s *k8sReleaseProvider) extractImagesFromService(svc *coreV1.Service) []str
 	set := labels.Set(svc.Spec.Selector)
 	pods, err := s.client.CoreV1().Pods(svc.Namespace).List(metaV1.ListOptions{LabelSelector: set.AsSelector().String()})
 	if err != nil {
-		logrus.Warnf("could not select pods: %v", err)
+		s.logger.WithField("error", err).Warn("could not select pod")
 	}
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
@@ -239,8 +251,12 @@ func (s *k8sReleaseProvider) handleAdd(obj interface{}) {
 			if _, ok := s.managedReleases[release.cfg.ReleaseName]; !ok {
 				release.images = s.getImages(obj)
 				s.managedReleases[release.cfg.ReleaseName] = release
-				logrus.Debugf("managed release [%s] added", release.cfg.ReleaseName)
-				logrus.Debugf("total managed %d", len(s.managedReleases))
+				s.logger.WithFields(log.Fields{
+					"release":       release.cfg.ReleaseName,
+					"chart_name":    release.cfg.ChartName,
+					"chart_version": release.cfg.ChartVersion,
+				}).Info("managed release added")
+				//s.logger.WithField("total", len(s.managedReleases)).Debug("managed releases found")
 			}
 			s.mutex.Unlock()
 		}
@@ -269,8 +285,8 @@ func (s *k8sReleaseProvider) handleDelete(obj interface{}) {
 			s.mutex.Lock()
 			if _, ok := s.managedReleases[release.cfg.ReleaseName]; ok {
 				delete(s.managedReleases, release.cfg.ReleaseName)
-				logrus.Infof("managed release [%s] deleted", release.cfg.ReleaseName)
-				logrus.Debugf("total managed %d", len(s.managedReleases))
+				s.logger.WithField("release", release.cfg.ReleaseName).Info("managed release deleted")
+				s.logger.WithField("total", len(s.managedReleases)).Debug("managed releases found")
 			}
 			s.mutex.Unlock()
 		}

@@ -1,9 +1,12 @@
 package cmd
 
 import (
-	"github.com/Sirupsen/logrus"
+	"context"
+	"fmt"
+
 	"github.com/entwico/helm-deployer/api"
 	"github.com/entwico/helm-deployer/conf"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/entwico/helm-deployer/service"
 	"github.com/pkg/errors"
@@ -12,36 +15,47 @@ import (
 	"k8s.io/helm/pkg/helm"
 )
 
-var serveCmd = cobra.Command{
+var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start API server",
 	Long:  "Start API server on specified host and port",
 	Run: func(cmd *cobra.Command, args []string) {
-		execWithConfig(cmd, serve)
+		executeWithConfig(serve)
 	},
 }
 
+func init() {
+	rootCmd.AddCommand(serveCmd)
+}
+
 func serve(config *conf.Config) {
+	logger := config.LogConfig.Logger
+	if err := config.ValidateConfig(); err != nil {
+		logger.WithField("error", err).Fatal("config is not valid")
+	}
+
 	services, err := configureServices(config)
 	if err != nil {
-		logrus.Fatal(err)
+		logger.WithField("error", err).Fatal("could not configure services")
 	}
+
+	go services.K8SReleaseProvider.Start()
+	go func() {
+		logger.Debug("start watching deploy config events")
+		services.WebhookDispatcher.StartHandleDeployConfigEvents(logging.NewContextWithLogger(context.Background(), logger))
+	}()
 
 	apiServer := api.NewAPI(config, services)
 
 	closer.Bind(func() {
 		err := apiServer.Stop()
 		if err != nil {
-			logrus.Fatalf("could not stop API server: %v", err)
+			logger.WithField("error", err).Fatal("error stopping API server")
 		}
 	})
-	go services.K8SReleaseProvider.Start()
-	go func() {
-		logrus.Debug("start watching deploy config events")
-		services.WebhookDispatcher.StartHandleDeployConfigEvents()
-	}()
 
-	logrus.Infof("API started on: %s:%d", config.API.Host, config.API.Port)
+	l := fmt.Sprintf("%v:%v", config.API.Host, config.API.Port)
+	logger.WithField("api_address", l).Info("API server started")
 	_ = apiServer.Start()
 }
 
@@ -60,7 +74,7 @@ func configureServices(config *conf.Config) (*domain.Services, error) {
 		return nil, errors.Wrap(err, "could not create chartValuesRepository")
 	}
 
-	k8SReleaseProvider, err := service.NewK8SReleaseProvider(config.K8S.ConfigPath)
+	k8SReleaseProvider, err := service.NewK8SReleaseProvider(config.K8S.ConfigPath, config.LogConfig.Logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create K8SReleaseProvider")
 	}
@@ -71,7 +85,7 @@ func configureServices(config *conf.Config) (*domain.Services, error) {
 		WebhookService:         service.NewWebhookService(webhookRepository),
 	}
 	services.HelmService = service.NewHelmService(helm.NewClient(helm.Host(config.Tiller.Host)), services.ChartValuesService, services.ChartRepositoryService)
-	nexusProcessor := service.NewNexusProcessor(k8SReleaseProvider)
+	nexusProcessor := service.NewNexusProcessor(k8SReleaseProvider, config.LogConfig.Logger)
 	gitlabProcessor := service.NewGitlabProcessor(services.WebhookService)
 	services.WebhookDispatcher = service.NewWebhookDispatcher(services.HelmService, []domain.WebhookProcessor{gitlabProcessor, nexusProcessor})
 	services.ReleaseService = service.NewReleaseService(services.HelmService)

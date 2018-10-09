@@ -1,13 +1,15 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -27,7 +29,7 @@ func NewGitlabProcessor(webhookService domain.WebhookService) domain.WebhookProc
 }
 
 //CanProcess returns true if webhook can be processed by this processor
-func (p *gitlabWebhookProcessor) CanProcess(headers http.Header, body []byte) bool {
+func (p *gitlabWebhookProcessor) CanProcess(ctx context.Context, headers http.Header, body []byte) bool {
 	val := headers.Get(headerWebhookGitlab)
 	if val != "" {
 		return true
@@ -36,23 +38,24 @@ func (p *gitlabWebhookProcessor) CanProcess(headers http.Header, body []byte) bo
 }
 
 //Process handles webhook
-func (p *gitlabWebhookProcessor) Process(headers http.Header, body []byte) error {
-	logrus.Info("processing Gitlab webhook")
+func (p *gitlabWebhookProcessor) Process(ctx context.Context, headers http.Header, body []byte) error {
+	logger := logging.FromContext(ctx)
+	logger.Info("processing Gitlab webhook")
 	event := headers.Get(headerWebhookGitlab)
 
 	switch event {
 	case gitlabEventTypePipeline:
-		return p.processPipelineEvent(body)
+		return p.processPipelineEvent(body, logger)
 	}
 	return fmt.Errorf("event '%s' not supported", event)
 }
 
-func (p *gitlabWebhookProcessor) GetDeployConfigEvents() chan domain.DeployConfig {
+func (p *gitlabWebhookProcessor) GetDeployConfigEvents(ctx context.Context) chan domain.DeployConfig {
 	return p.events
 }
 
-func (p *gitlabWebhookProcessor) processPipelineEvent(body []byte) error {
-	logrus.Debug("processing pipeline event")
+func (p *gitlabWebhookProcessor) processPipelineEvent(body []byte, logger *log.Entry) error {
+	logger.Debug("processing pipeline event")
 	payload := new(WebhookGitlabPipeline)
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return err
@@ -68,11 +71,11 @@ func (p *gitlabWebhookProcessor) processPipelineEvent(body []byte) error {
 		}
 
 		if err := p.processCondition(cond); err != nil {
-			logrus.Error(err)
+			logger.Error(err)
 			return err
 		}
 	} else {
-		logrus.Infof(fmt.Sprintf("skipping pipeline status '%s'", payload.ObjectAttributes.Status))
+		logger.WithField("status", payload.ObjectAttributes.Status).Info("skipping pipeline status")
 	}
 	return nil
 }

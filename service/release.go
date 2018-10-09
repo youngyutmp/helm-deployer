@@ -1,10 +1,11 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"sort"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/golang/protobuf/ptypes"
 )
@@ -21,10 +22,11 @@ func NewReleaseService(helmService domain.HelmService) domain.ReleaseService {
 }
 
 //ListReleases returns a list of all installed releases
-func (c *releaseServiceImpl) ListReleases() ([]domain.Release, error) {
-	logrus.Debug("Getting all releases")
+func (c *releaseServiceImpl) ListReleases(ctx context.Context) ([]domain.Release, error) {
+	logger := logging.FromContext(ctx)
+	logger.Debug("getting all releases")
 
-	r, err := c.HelmService.ListReleases()
+	r, err := c.HelmService.ListReleases(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +74,15 @@ func (c *releaseServiceImpl) ListReleases() ([]domain.Release, error) {
 }
 
 //UpdateRelease updates helm release
-func (c *releaseServiceImpl) UpdateRelease(r *domain.ReleaseUpdateRequest) error {
-	logrus.Debugf("Updating release %s", r.Name)
+func (c *releaseServiceImpl) UpdateRelease(ctx context.Context, r *domain.ReleaseUpdateRequest) error {
+	logger := logging.FromContext(ctx)
+	logger.WithField("release", r.Name).Debug("updating release")
 	response, err := http.Get(r.ChartURL)
 	if err != nil {
 		return err
 	}
 
 	_ = response.Body.Close()
-	_, err = c.HelmService.UpdateRelease(r.Name, response.Body, []byte(r.Values))
+	_, err = c.HelmService.UpdateRelease(ctx, r.Name, response.Body, []byte(r.Values))
 	return err
 }

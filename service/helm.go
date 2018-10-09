@@ -1,12 +1,13 @@
 package service
 
 import (
+	"bytes"
+	"context"
 	"io"
 
-	"bytes"
-
-	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -29,7 +30,7 @@ func NewHelmService(client *helm.Client, chartValuesService domain.ChartValuesSe
 }
 
 //ListReleases returns all Helm releases
-func (s *helmServiceImpl) ListReleases() (*services.ListReleasesResponse, error) {
+func (s *helmServiceImpl) ListReleases(ctx context.Context) (*services.ListReleasesResponse, error) {
 	response, err := s.client.ListReleases()
 	if err != nil {
 		return nil, err
@@ -38,19 +39,24 @@ func (s *helmServiceImpl) ListReleases() (*services.ListReleasesResponse, error)
 }
 
 //UpdateRelease updates helm release
-func (s *helmServiceImpl) UpdateRelease(rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error) {
+func (s *helmServiceImpl) UpdateRelease(ctx context.Context, rlsName string, chartData io.Reader, rawVals []byte) (*services.UpdateReleaseResponse, error) {
+	logger := logging.FromContext(ctx)
 	chart, err := chartutil.LoadArchive(chartData)
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("chart %s loaded", chart.Metadata.Name)
-	logrus.Debugf("updating release %s", rlsName)
+	logger.WithField("chart_name", chart.Metadata.Name).Debug("chart loaded")
+	logger.WithField("release", rlsName).Debug("updating release")
 	return s.client.UpdateReleaseFromChart(rlsName, chart, helm.UpdateValueOverrides(rawVals), helm.UpgradeForce(true), helm.UpgradeRecreate(true))
 }
 
 //DeployChart deploys the helm chart
-func (s *helmServiceImpl) DeployChart(cfg domain.DeployConfig) error {
-	logrus.Debugf("deploying chart %s %s", cfg.ChartName, cfg.ChartVersion)
+func (s *helmServiceImpl) DeployChart(ctx context.Context, cfg domain.DeployConfig) error {
+	logger := logging.FromContext(ctx)
+	logger.WithFields(log.Fields{
+		"chart_name":    cfg.ChartName,
+		"chart_version": cfg.ChartVersion,
+	}).Debug("deploying chart")
 
 	var rawVals []byte
 	if cfg.ChartValuesID != nil {
@@ -63,11 +69,11 @@ func (s *helmServiceImpl) DeployChart(cfg domain.DeployConfig) error {
 		}
 	}
 
-	data, err := s.chartRepositoryService.GetChartData(cfg.ChartName, cfg.ChartVersion)
+	data, err := s.chartRepositoryService.GetChartData(ctx, cfg.ChartName, cfg.ChartVersion)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.UpdateRelease(cfg.ReleaseName, bytes.NewReader(data), rawVals)
+	_, err = s.UpdateRelease(ctx, cfg.ReleaseName, bytes.NewReader(data), rawVals)
 	return err
 }

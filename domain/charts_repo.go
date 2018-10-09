@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -17,6 +18,6 @@ type ChartRepositoryItem struct {
 
 //ChartRepositoryService interface
 type ChartRepositoryService interface {
-	FindAllCharts() ([]ChartRepositoryItem, error)
-	GetChartData(chartName, chartVersion string) ([]byte, error)
+	FindAllCharts(ctx context.Context) ([]ChartRepositoryItem, error)
+	GetChartData(ctx context.Context, chartName, chartVersion string) ([]byte, error)
 }

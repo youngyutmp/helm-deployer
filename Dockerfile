@@ -1,6 +1,6 @@
-FROM alpine
+FROM alpine:3.8
 
-ARG APP_VERSION=0.4.2
+ARG APP_VERSION=0.5.0
 ARG DOWNLOAD_URL=https://github.com/entwico/helm-deployer/releases/download/v$APP_VERSION/linux_amd64_helm-deployer
 
 LABEL maintainer="Andrew Tarasenko andrexus@gmail.com"
@@ -14,7 +14,7 @@ RUN apk update && \
     chmod +x /app/helm-deployer && \
     rm -rf /var/cache/apk/*
 
-ADD config.default.json /app/config.json
+ADD config.default.yaml /app/config.yaml
 
 EXPOSE 8000
 

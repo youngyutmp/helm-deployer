@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"net/http"
@@ -56,15 +57,15 @@ type WebhookRepository interface {
 
 //WebhookDispatcher handles webhooks
 type WebhookDispatcher interface {
-	GetWebhookProcessor(headers http.Header, body []byte) (WebhookProcessor, error)
-	StartHandleDeployConfigEvents()
+	GetWebhookProcessor(ctx context.Context, headers http.Header, body []byte) (WebhookProcessor, error)
+	StartHandleDeployConfigEvents(ctx context.Context)
 }
 
 //WebhookProcessor listens to Webhooks and deploys charts
 type WebhookProcessor interface {
 	//DetermineWebhookType(headers http.Header) (enums.WebhookType, error)
 	//DeployChart(cfg DeployConfig) error
-	CanProcess(headers http.Header, body []byte) bool
-	Process(headers http.Header, body []byte) error
-	GetDeployConfigEvents() chan DeployConfig
+	CanProcess(ctx context.Context, headers http.Header, body []byte) bool
+	Process(ctx context.Context, headers http.Header, body []byte) error
+	GetDeployConfigEvents(ctx context.Context) chan DeployConfig
 }

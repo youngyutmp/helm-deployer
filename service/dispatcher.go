@@ -1,13 +1,14 @@
 package service
 
 import (
+	"context"
 	"net/http"
-
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type webhookProcessor struct {
@@ -20,9 +21,9 @@ func NewWebhookDispatcher(helmService domain.HelmService, processors []domain.We
 	return &webhookProcessor{helmService: helmService, processors: processors}
 }
 
-func (c *webhookProcessor) GetWebhookProcessor(headers http.Header, body []byte) (domain.WebhookProcessor, error) {
+func (c *webhookProcessor) GetWebhookProcessor(ctx context.Context, headers http.Header, body []byte) (domain.WebhookProcessor, error) {
 	for _, processor := range c.processors {
-		if processor.CanProcess(headers, body) {
+		if processor.CanProcess(ctx, headers, body) {
 			return processor, nil
 		}
 	}
@@ -30,22 +31,30 @@ func (c *webhookProcessor) GetWebhookProcessor(headers http.Header, body []byte)
 	return nil, errors.New("could not find suitable WebhookProcessor")
 }
 
-func (c *webhookProcessor) StartHandleDeployConfigEvents() {
+func (c *webhookProcessor) StartHandleDeployConfigEvents(ctx context.Context) {
+	logger := logging.FromContext(ctx)
 	chans := make([]<-chan domain.DeployConfig, 0)
 	for _, p := range c.processors {
-		chans = append(chans, p.GetDeployConfigEvents())
+		chans = append(chans, p.GetDeployConfigEvents(ctx))
 	}
 	out := getDeployConfigsChan(chans...)
 
 	for {
 		select {
 		case cfg := <-out:
-			logrus.Debugf("updating release %s with chart %s %s", cfg.ReleaseName, cfg.ChartName, cfg.ChartVersion)
-			if err := c.helmService.DeployChart(cfg); err != nil {
-				logrus.Errorf("could not deploy chart %s: %v", cfg.ChartName, err)
+			logger.WithFields(log.Fields{
+				"release":       cfg.ReleaseName,
+				"chart_name":    cfg.ChartName,
+				"chart_version": cfg.ChartVersion,
+			}).Info("updating release")
+			if err := c.helmService.DeployChart(ctx, cfg); err != nil {
+				logger.WithFields(log.Fields{
+					"chart_name": cfg.ChartName,
+					"error":      cfg.ChartVersion,
+				}).Error("could not deploy chart")
 				continue
 			}
-			logrus.Debugf("release %s updated", cfg.ReleaseName)
+			logger.WithField("release", cfg.ReleaseName).Debug("release updated")
 		}
 	}
 }

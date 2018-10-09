@@ -8,21 +8,24 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/entwico/helm-deployer/conf"
+	"github.com/entwico/helm-deployer/conf/logging"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/entwico/helm-deployer/embedded"
 	"github.com/entwico/helm-deployer/enums"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 // API is the data holder for the API
 type API struct {
 	config *conf.Config
-	log    *logrus.Entry
+	log    *log.Entry
 	echo   *echo.Echo
 
+	// Services used by the API
 	services *domain.Services
 }
 
@@ -54,7 +57,7 @@ func (api *API) Start() error {
 
 // Stop will shutdown the engine internally
 func (api *API) Stop() error {
-	logrus.Info("stopping API server")
+	api.log.Info("stopping API server")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return api.echo.Shutdown(ctx)
@@ -62,9 +65,10 @@ func (api *API) Stop() error {
 
 // NewAPI will create an api instance that is ready to start
 func NewAPI(config *conf.Config, services *domain.Services) *API {
+	logger := config.LogConfig.Logger
 	api := &API{
 		config:   config,
-		log:      logrus.WithField("component", "api"),
+		log:      logger.WithField("component", "api"),
 		services: services,
 	}
 
@@ -77,7 +81,7 @@ func NewAPI(config *conf.Config, services *domain.Services) *API {
 	}
 	skipAuth := config.APP.Username == "" && config.APP.Password == ""
 	if skipAuth {
-		logrus.Debugf("basic auth credentials are not configured")
+		api.log.Info("basic auth credentials are not configured")
 	}
 	authConfig.Skipper = func(c echo.Context) bool {
 		if skipAuth {
@@ -91,13 +95,17 @@ func NewAPI(config *conf.Config, services *domain.Services) *API {
 	e := echo.New()
 
 	e.HideBanner = true
+	e.HidePort = true
+
 	e.HTTPErrorHandler = api.handleError
+	api.echo = e
 
 	e.GET("/health", api.Health)
 	e.POST("/api/v1/callbacks", api.ProcessWebhook)
 	e.POST("/api/v1/callbacks/:name", api.ProcessWebhook)
 
 	g := e.Group("/api/v1", basicAuth)
+	g.Use(api.setupRequest)
 
 	// chart repository
 	g.GET("/charts", api.ListChartItems)
@@ -123,8 +131,43 @@ func NewAPI(config *conf.Config, services *domain.Services) *API {
 
 	e.GET("/*", api.serveVirtualFS, api.frontend404Fallback)
 
-	api.echo = e
 	return api
+}
+
+func (api *API) setupRequest(f echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		req := ctx.Request()
+		logger := api.log.WithFields(log.Fields{
+			"method":     req.Method,
+			"path":       req.URL.Path,
+			"request_id": uuid.NewRandom(),
+		})
+
+		rqCtx := logging.NewContextWithLogger(req.Context(), logger)
+		ctx.SetRequest(ctx.Request().WithContext(rqCtx))
+
+		startTime := time.Now()
+		defer func() {
+			rsp := ctx.Response()
+			logger.WithFields(log.Fields{
+				"status_code":   rsp.Status,
+				"runtime_milli": time.Since(startTime).Nanoseconds() / (int64(time.Millisecond) / int64(time.Nanosecond)),
+			}).Debug("request finished")
+		}()
+
+		logger.WithFields(log.Fields{
+			"user_agent": req.UserAgent(),
+		}).Debug("request started")
+
+		// we have to do this b/c if not the final error handler will not
+		// in the chain of middleware. It will be called after meaning that the
+		// response won't be set properly.
+		err := f(ctx)
+		if err != nil {
+			ctx.Error(err)
+		}
+		return err
+	}
 }
 
 func (api *API) serveVirtualFS(ctx echo.Context) error {

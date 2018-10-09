@@ -1,16 +1,14 @@
 package service
 
 import (
-	"net/http"
-
+	"context"
 	"encoding/json"
-
+	"fmt"
+	"net/http"
 	"strings"
 
-	"fmt"
-
-	"github.com/Sirupsen/logrus"
 	"github.com/entwico/helm-deployer/domain"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -22,18 +20,20 @@ const (
 type nexusWebhookProcessor struct {
 	releaseProvider domain.K8SReleaseProvider
 	events          chan domain.DeployConfig
+	logger          *log.Entry
 }
 
 //NewNexusProcessor returns new instance of Nexus webhook processor
-func NewNexusProcessor(releaseProvider domain.K8SReleaseProvider) domain.WebhookProcessor {
+func NewNexusProcessor(releaseProvider domain.K8SReleaseProvider, logger *log.Entry) domain.WebhookProcessor {
 	return &nexusWebhookProcessor{
 		releaseProvider: releaseProvider,
 		events:          make(chan domain.DeployConfig),
+		logger:          logger,
 	}
 }
 
 //CanProcess returns true if webhook can be processed by this processor
-func (p *nexusWebhookProcessor) CanProcess(headers http.Header, body []byte) bool {
+func (p *nexusWebhookProcessor) CanProcess(ctx context.Context, headers http.Header, body []byte) bool {
 	val := headers.Get(headerWebhookNexus)
 	if val != "" {
 		return true
@@ -42,38 +42,44 @@ func (p *nexusWebhookProcessor) CanProcess(headers http.Header, body []byte) boo
 }
 
 //Process handles webhook
-func (p *nexusWebhookProcessor) Process(headers http.Header, body []byte) error {
-	logrus.Info("processing Nexus webhook")
+func (p *nexusWebhookProcessor) Process(ctx context.Context, headers http.Header, body []byte) error {
+	p.logger.Info("processing Nexus webhook")
 	event := headers.Get(headerWebhookNexusType)
 
 	switch event {
 	case nexusEventTypeAsset:
 		return p.processAssetEvent(body)
 	default:
-		logrus.Debugf("skipping event %s", event)
+		p.logger.WithField("event", event).Debug("skipping event")
 	}
 	return nil
 }
 
-func (p *nexusWebhookProcessor) GetDeployConfigEvents() chan domain.DeployConfig {
+func (p *nexusWebhookProcessor) GetDeployConfigEvents(ctx context.Context) chan domain.DeployConfig {
 	return p.events
 }
 
 func (p *nexusWebhookProcessor) processAssetEvent(body []byte) error {
-	logrus.Debug("processing asset event")
+	p.logger.Debug("processing asset event")
 	payload := new(WebhookNexusAsset)
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return err
 	}
 	if payload.Asset.Format != "docker" || !(payload.Action == "UPDATED" || payload.Action == "CREATED") {
-		logrus.Debugf("ignoring asset event for action [%s], format [%s]", payload.Action, payload.Asset.Format)
+		p.logger.WithFields(log.Fields{
+			"action": payload.Action,
+			"format": payload.Asset.Format,
+		}).Debug("ignoring asset event")
 		return nil
 	}
 
 	path, tag := payload.GetRepositoryPathAndTag()
 	if tag != "" {
 		imagePath := fmt.Sprintf("%s:%s", path, tag)
-		logrus.Debugf("image %s updated in repository %s", imagePath, payload.RepositoryName)
+		p.logger.WithFields(log.Fields{
+			"image":      imagePath,
+			"repository": payload.RepositoryName,
+		}).Debug("image updated in repository")
 		deployConfigs, err := p.releaseProvider.GetDeployConfigsForImagePath(imagePath)
 		if err != nil {
 			return err

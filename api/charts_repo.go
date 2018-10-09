@@ -8,14 +8,14 @@ import (
 )
 
 //ListChartItems returns list of Charts
-func (api *API) ListChartItems(ctx echo.Context) error {
+func (api *API) ListChartItems(c echo.Context) error {
 	var err error
 
-	items, err := api.services.ChartRepositoryService.FindAllCharts()
+	items, err := api.services.ChartRepositoryService.FindAllCharts(c.Request().Context())
 	if err != nil {
 		response := &MessageResponse{Status: enums.StatusError, Message: err.Error()}
-		return ctx.JSON(http.StatusInternalServerError, response)
+		return c.JSON(http.StatusInternalServerError, response)
 	}
 	response := &ListResponse{Page: 1, PageSize: len(items), Total: len(items), Items: items}
-	return ctx.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, response)
 }

@@ -1,7 +1,7 @@
 .idea
 *.iml
 vendor
-config.json
+config.yaml
 *.bolt
 dist
 build

@@ -12,13 +12,11 @@ vars:
   GIT_VERSION:
     sh: git describe --abbrev=0 --tags 2> /dev/null || git rev-parse HEAD
   GOTOOLS: >
-    github.com/golang/dep/cmd/dep
     github.com/alvaroloes/enumer
     github.com/mjibson/esc
     github.com/mitchellh/gox
     github.com/tcnksm/ghr
   LINTERS: >
-    gopkg.in/alecthomas/gometalinter.v2
     github.com/mgechev/revive
     github.com/kisielk/errcheck
     golang.org/x/tools/cmd/goimports
@@ -38,10 +36,7 @@ tasks:
   build:
     cmds:
     - task: clean
-    - task: setup_build
-    - task: vendor
     - task: generate
-    - task: test
     - echo "==> Compiling..."
     - CGO_ENABLED=0 gox -ldflags "{{.GOLDFLAGS}}" -osarch "{{.OSARCH}}" -output "{{.GOX_OUTPUT}}"
     vars:
@@ -52,11 +47,6 @@ tasks:
   dist:
     cmds:
     - ghr -u {{.DIST_USER}} --token {{.GITHUB_TOKEN}} --replace {{.GIT_VERSION}} build/
-
-  vendor:
-    cmds:
-    - echo "==> Vendoring dependencies..."
-    - dep ensure -v -vendor-only
 
   clean:
     cmds:
@@ -69,19 +59,19 @@ tasks:
     - go generate
 
   test:
-    deps: [setup_build]
     cmds:
     - task: lint
     - echo "==> Testing code..."
-    - go test -v -race -tags "{{.BUILDTAGS}} cgo" $(go list {{.PROJECT}}/... | grep -v vendor)
+    - go test -v -race -tags "{{.BUILDTAGS}} cgo" $(go list {{.PROJECT}}/...)
 
   lint:
-    deps: [gometalinter, revive]
+    deps: [revive]
+#    deps: [gometalinter, revive]
 
   gometalinter:
     cmds:
-    - gometalinter.v2 ./...
+    - gometalinter ./...
 
   revive:
     cmds:
-    - revive -config revive.toml -formatter stylish -exclude vendor/... ./...
+    - revive -config revive.toml -formatter stylish ./...

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -84,6 +85,6 @@ type ReleaseChartConfig struct {
 
 //ReleaseService manages Releases
 type ReleaseService interface {
-	ListReleases() ([]Release, error)
-	UpdateRelease(r *ReleaseUpdateRequest) error
+	ListReleases(ctx context.Context) ([]Release, error)
+	UpdateRelease(ctx context.Context, r *ReleaseUpdateRequest) error
 }
