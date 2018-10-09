@@ -6,6 +6,7 @@ go:
 env:
   global:
     - "PATH=/home/travis/gopath/bin:$PATH"
+    - GO111MODULE=on
     - FRONTEND_VERSION="2018-03-31-15-41-57"
 
 script:
