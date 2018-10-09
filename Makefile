@@ -8,12 +8,12 @@ task_runner_linux: download_task_runner_linux install_task_runner
 .PHONY: download_task_runner_mac
 download_task_runner_mac:
 	@echo "==> Downloading task runner (mac)..."
-	wget -O task.tar.gz https://github.com/go-task/task/releases/download/v2.1.1/task_darwin_amd64.tar.gz
+	wget -q -O task.tar.gz https://github.com/go-task/task/releases/download/v2.1.1/task_darwin_amd64.tar.gz
 
 .PHONY: download_task_runner_linux
 download_task_runner_linux:
 	@echo "==> Downloading task runner (linux)..."
-	wget -O task.tar.gz  https://github.com/go-task/task/releases/download/v2.1.1/task_linux_386.tar.gz
+	wget -q -O task.tar.gz  https://github.com/go-task/task/releases/download/v2.1.1/task_linux_386.tar.gz
 
 .PHONY: install_task_runner
 install_task_runner:
