@@ -1,9 +1,7 @@
 package conf
 
 import (
-	"log"
-
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	"github.com/xlab/closer"
 )
 
@@ -12,7 +10,7 @@ func BoltConnect(config *Config) (*bolt.DB, error) {
 	logger := config.LogConfig.Logger
 	db, err := bolt.Open(config.DB.Path, 0600, nil)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	closer.Bind(func() {

@@ -9,10 +9,11 @@ require (
 	github.com/alvaroloes/enumer v0.0.0-20180611091743-6bcfe2edaac3 // indirect
 	github.com/aokoli/goutils v1.0.1 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/boltdb/bolt v1.3.1
+	github.com/coreos/bbolt v1.3.0
 	github.com/davecgh/go-spew v1.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/distribution v0.0.0-20180808020138-4a75b72fd362
+	github.com/etcd-io/bbolt v1.3.1-etcd.8
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20180615134936-113d3961e731

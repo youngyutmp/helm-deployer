@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"

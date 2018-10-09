@@ -1,13 +1,11 @@
 package service
 
 import (
+	"encoding/json"
+	"errors"
 	"time"
 
-	"errors"
-
-	"encoding/json"
-
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	"github.com/entwico/helm-deployer/domain"
 	"github.com/globalsign/mgo/bson"
 )
