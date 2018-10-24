@@ -162,7 +162,7 @@ func isManagedObject(obj interface{}) bool {
 		meta := acc.GetObjectMeta()
 		annotations := meta.GetAnnotations()
 		if val, ok := annotations["helm-deployer/enabled"]; ok {
-			if val == "\"true\"" {
+			if val == "true" || val == "yes" || val == "1" {
 				return true
 			}
 		}

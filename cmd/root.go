@@ -89,10 +89,6 @@ func initConfig() {
 
 func configureLogging(config *conf.Config) error {
 	logConfig := config.LogConfig
-	hostname, err := os.Hostname()
-	if err != nil {
-		return err
-	}
 	textFormatter := &log.TextFormatter{
 		FullTimestamp:          true,
 		ForceColors:            true,
@@ -102,7 +98,7 @@ func configureLogging(config *conf.Config) error {
 	if strings.ToLower(logConfig.Formatter) == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
-	logger := log.WithFields(log.Fields{"hostname": hostname, "service_name": serviceName})
+	logger := log.WithFields(log.Fields{"service_name": serviceName})
 
 	// use a file if you want
 	if logConfig.File != "" {
